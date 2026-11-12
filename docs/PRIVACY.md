@@ -1,65 +1,65 @@
-# Tietosuojaseloste – Kaupitse Botille
+# Privacy Policy – She Sells Seashells
 
-**Voimassa 12.11.2026 alkaen**
+**Effective: November 12, 2026**
 
-Tämä seloste kertoo, mitä tietoja Discord-botti **Kaupitse Botille** ("botti", "me") käsittelee, miksi ja kenelle niitä luovutetaan. Botti on harrastusprojekti, jonka lähdekoodi on julkisesti nähtävissä: <https://github.com/Marssix/She-sells-seashells>.
+This Privacy Policy explains what information the Discord bot **She Sells Seashells** ("the bot", "we", "us") processes, why, and who it is shared with. The bot is a hobby project, and its source code is publicly available at <https://github.com/Marssix/She-sells-seashells>.
 
-## 1. Rekisterinpitäjä ja yhteystiedot
-Rekisterinpitäjä on botin ylläpitäjä (GitHub-käyttäjä **Marssix**).
-Tietosuoja-asioissa ota yhteyttä avaamalla issue osoitteessa <https://github.com/Marssix/She-sells-seashells/issues>. Älä kirjoita issueen henkilötietoja; pyydämme tarvittaessa yksityisen yhteydenottotavan.
+## 1. Data controller and contact
+The data controller is the operator of the bot (GitHub user **Marssix**).
+For privacy matters, contact us by opening an issue at <https://github.com/Marssix/She-sells-seashells/issues>. Please do not include personal information in the issue. If needed, we will arrange a private way to get in touch.
 
-## 2. Mitä tietoja käsittelemme
+## 2. Information we process
 
-| Tieto | Mistä | Miksi |
+| Information | Source | Purpose |
 |---|---|---|
-| Discord-käyttäjätunnus (ID), käyttäjänimi ja palvelinkohtainen näyttönimi | Discord, kun käytät komentoa tai nappia | Pelin pyörittäminen: kuka myy, kenen vuoro on, nimi tulosviestissä |
-| Palvelimen, kanavan ja ketjun tunnisteet | Discord | Pelin sitominen oikeaan ketjuun |
-| Kirjoittamiesi viestien sisältö **pelisi ketjussa, pelin ollessa käynnissä** | Discord | Myyntipuheesi välitetään tekoälyostajalle, jotta se voi vastata |
-| Komentojen ja nappien käyttö | Discord | Pelin toiminnot (aloitus, tarjouksen hyväksyminen, luovutus) |
+| Discord user ID, username and server display name | Discord, when you use a command or button | Running the game: who the seller is, whose turn it is, your name in the result message |
+| Server, channel and thread IDs | Discord | Linking the game to the right thread |
+| The content of messages you write **in your game thread while the game is running** | Discord | Your sales pitch is passed to the AI buyer so it can respond |
+| Use of commands and buttons | Discord | Game actions (starting a game, accepting an offer, giving up) |
 
-**Muut viestit:** Botilla on Discordin *Message Content* -oikeus, jotta se voi lukea myyntipuheet. Discord toimittaa botille teknisesti myös muita viestejä kanavilta, joille botilla on pääsy. Botti ohittaa heti kaikki viestit, jotka eivät ole käynnissä olevan pelin myyjän viestejä pelin omassa ketjussa. Niitä ei tallenneta, lokiteta eikä lähetetä eteenpäin.
+**Other messages:** The bot has Discord's *Message Content* permission so it can read sales pitches. Because of this, Discord also delivers other messages from channels the bot can access. The bot immediately ignores every message that is not from the seller of an active game in that game's own thread. Ignored messages are not stored, logged or forwarded.
 
-**Emme kerää** sähköpostiosoitteita, maksutietoja, sijaintitietoja emmekä muita tietoja kuin yllä luetellut.
+We **do not collect** email addresses, payment details, location data or any information other than what is listed above.
 
-### Äänitila (ei vielä käytössä)
-Botin suunnitteilla oleva äänitila kuuntelisi pelaajan puhetta äänikanavalla ja muuttaisi sen tekstiksi. Päivitämme tämän selosteen ja kerromme äänen käsittelystä ennen kuin toiminto otetaan käyttöön. Periaatteena on, että ääntä ei tallenneta.
+### Voice mode (not yet available)
+A planned voice mode would listen to the player's speech in a voice channel and convert it to text. We will update this policy and explain how voice data is handled before the feature is released. Our principle is that audio will not be recorded or stored.
 
-## 3. Käsittelyn oikeusperuste
-Käsittely perustuu **oikeutettuun etuun** (EU:n yleinen tietosuoja-asetus, art. 6(1)(f)): tietoja tarvitaan, jotta voimme tarjota pelin, jonka itse käynnistät. Käsittelemme vain sen, mikä on pelin toiminnan kannalta välttämätöntä.
+## 3. Legal basis
+Processing is based on **legitimate interest** (EU General Data Protection Regulation, Art. 6(1)(f)). The information is needed to provide the game that you start yourself, and we process only what is necessary for the game to work.
 
-## 4. Kenelle tietoja luovutetaan
-- **Anthropic (Claude API):** tekoälyostajan vastaukset tuotetaan Anthropicin Claude-mallilla. Anthropicille lähetetään **myyntipuheesi teksti** ja pelin tila (esim. ostajahahmo, tuote ja mittarien arvot). Discord-tunnuksiasi tai nimeäsi **ei** lähetetä. Anthropic ei oletuksena käytä API:n kautta lähetettyä dataa mallien kouluttamiseen. Lue lisää: <https://www.anthropic.com/legal/privacy>.
-- **Discord:** kaikki pelin viestit kulkevat Discordin kautta, ja Discord käsittelee niitä omien ehtojensa mukaisesti: <https://discord.com/privacy>.
-- **Palvelinympäristö:** botti ajetaan ylläpitäjän koneella tai pilvipalvelimella, jonka palveluntarjoaja voi teknisesti käsitellä botin lokitietoja.
+## 4. Who we share information with
+- **Anthropic (Claude API):** the AI buyer's replies are generated with Anthropic's Claude model. We send Anthropic **the text of your sales pitch** and the game state (for example, the buyer character, the product and the meter values). Your Discord IDs and name are **not** sent. By default, Anthropic does not use data sent through its API to train its models. Learn more: <https://www.anthropic.com/legal/privacy>.
+- **Discord:** all game messages pass through Discord, which processes them under its own terms: <https://discord.com/privacy>.
+- **Hosting:** the bot runs on the operator's computer or a cloud server, and the hosting provider may technically process the bot's log data.
 
-Emme myy tietoja emmekä käytä niitä mainontaan.
+We do not sell information or use it for advertising.
 
-## 5. Tietojen siirto EU:n ulkopuolelle
-Anthropic ja Discord käsittelevät tietoja myös Yhdysvalloissa. Siirrot perustuvat palveluntarjoajien käyttämiin EU:n hyväksymiin siirtomekanismeihin, kuten EU–US Data Privacy Framework -järjestelyyn ja EU-komission vakiosopimuslausekkeisiin.
+## 5. Transfers outside the EU
+Anthropic and Discord also process data in the United States. These transfers rely on the transfer mechanisms approved by the EU that these providers use, such as the EU–US Data Privacy Framework and the European Commission's Standard Contractual Clauses.
 
-## 6. Kuinka kauan tietoja säilytetään
-- **Pelin tila ja keskusteluhistoria** ovat vain botin muistissa, ja ne poistetaan, kun peli päättyy tai botti käynnistetään uudelleen. Botti ei tällä hetkellä tallenna mitään pysyvään tietokantaan.
-- **Viestit Discordissa:** pelin ketju ja viestit jäävät Discordiin palvelimesi asetusten mukaisesti. Voit poistaa omat viestisi Discordissa milloin tahansa.
-- **Tekniset lokit** voivat sisältää näyttönimesi, valitun ostajan, pelin lopputuloksen ja virheilmoituksia. Lokeja säilytetään enintään 30 päivää vianetsintää varten.
-- **Anthropic** säilyttää API-pyyntöjä omien käytäntöjensä mukaisesti (ks. kohta 4).
+## 6. How long information is kept
+- **Game state and conversation history** are kept only in the bot's memory. They are deleted when the game ends or the bot restarts. The bot does not currently store anything in a permanent database.
+- **Messages on Discord:** the game thread and its messages stay on Discord according to your server's settings. You can delete your own messages on Discord at any time.
+- **Technical logs** may contain your display name, the chosen buyer, the game result and error messages. Logs are kept for no more than 30 days for troubleshooting.
+- **Anthropic** retains API requests according to its own policies (see section 4).
 
-### Tulevat pistetaulukot
-Jos botti saa myöhemmin pysyvät profiilit ja pistetaulukot, tallennamme niihin Discord-tunnuksesi ja pelitilastosi. Päivitämme tämän selosteen ennen kuin toiminto otetaan käyttöön.
+### Future leaderboards
+If the bot later gets permanent profiles and leaderboards, we will store your Discord ID and game statistics for them. We will update this policy before that feature is released.
 
-## 7. Oikeutesi
-Sinulla on EU:n tietosuoja-asetuksen mukaan oikeus:
-- saada tietää, mitä tietoja sinusta käsitellään
-- pyytää tietojen oikaisemista tai poistamista
-- vastustaa tietojen käsittelyä
-- tehdä valitus valvontaviranomaiselle. Suomessa se on tietosuojavaltuutetun toimisto: <https://tietosuoja.fi>.
+## 7. Your rights
+Under the EU General Data Protection Regulation, you have the right to:
+- know what information about you is processed
+- request that your information be corrected or deleted
+- object to the processing
+- lodge a complaint with a supervisory authority. In Finland, this is the Office of the Data Protection Ombudsman: <https://tietosuoja.fi/en>.
 
-Koska botti ei tallenna tietoja pysyvästi, useimmissa tapauksissa sinusta ei ole tallessa mitään poistettavaa. Ota yhteyttä kohdan 1 mukaisesti. Voit myös lopettaa käsittelyn kokonaan lopettamalla botin käytön. Palvelimen ylläpitäjä voi poistaa botin palvelimelta.
+Because the bot does not store information permanently, in most cases there is nothing about you to delete. Contact us as described in section 1. You can also stop all processing by no longer using the bot, and a server administrator can remove the bot from their server.
 
-## 8. Ikäraja
-Botti on tarkoitettu Discordin käyttäjille, ja Discordin ikärajat koskevat myös sitä. Alaikäraja on vähintään 13 vuotta, ja joissain maissa se on korkeampi.
+## 8. Age requirement
+The bot is intended for Discord users, and Discord's age requirements apply to it. The minimum age is 13, and it is higher in some countries.
 
-## 9. Tietoturva
-Tietoja säilytetään vain niin kauan kuin peli on käynnissä. API-avaimet säilytetään erillään lähdekoodista. Yhteydet Discordiin ja Anthropicille ovat salattuja (HTTPS/TLS).
+## 9. Security
+Information is kept only while a game is running. API keys are stored separately from the source code. Connections to Discord and Anthropic are encrypted (HTTPS/TLS).
 
-## 10. Muutokset
-Voimme päivittää tätä selostetta, esimerkiksi kun botti saa uusia ominaisuuksia. Muutokset ja niiden historia näkyvät tämän tiedoston versiohistoriassa GitHubissa. Merkittävistä muutoksista kerromme ennen kuin ne tulevat voimaan.
+## 10. Changes
+We may update this policy, for example when the bot gets new features. Changes and their history are visible in this file's version history on GitHub. We will announce significant changes before they take effect.
