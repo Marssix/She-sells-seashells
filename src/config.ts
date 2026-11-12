@@ -23,6 +23,23 @@ const EnvSchema = z.object({
 
 export type Config = z.infer<typeof EnvSchema>;
 
+const AiEnvSchema = z.object({
+  ANTHROPIC_MODEL: z.string().trim().min(1).default("claude-opus-5-5"),
+  ANTHROPIC_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("low"),
+});
+
+export type AiConfig = z.infer<typeof AiEnvSchema>;
+
+/** Tekoälyasetukset erikseen, jotta terminaalipelitesti toimii ilman Discord-tunnuksia. */
+export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
+  const clean = Object.fromEntries(
+    Object.entries({ ANTHROPIC_MODEL: env.ANTHROPIC_MODEL, ANTHROPIC_EFFORT: env.ANTHROPIC_EFFORT }).filter(
+      ([, v]) => v !== undefined && v.trim() !== "",
+    ),
+  );
+  return AiEnvSchema.parse(clean);
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = EnvSchema.safeParse(env);
   if (!parsed.success) {
