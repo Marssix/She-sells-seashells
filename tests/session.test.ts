@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BuyerDecisionSchema } from "../src/ai/buyer.js";
+import { BuyerDecisionSchema, supportsServerFallback } from "../src/ai/buyer.js";
 import { buildSystemPrompt, buildTurnMessage } from "../src/ai/prompts.js";
 import { personas } from "../src/content/personas.js";
 import { products } from "../src/content/products.js";
@@ -89,6 +89,12 @@ describe("promptit", () => {
     expect(msg).toContain(`Kiinnostus: ${s.interest}/100`);
     expect(msg).not.toContain("viimeinen vuorosi");
     expect(buildTurnMessage({ ...s, turnsLeft: 1 }, "x")).toContain("viimeinen vuorosi");
+  });
+
+  it("varamalli lähetetään vain sitä tukeville malleille", () => {
+    expect(supportsServerFallback("claude-opus-5-5")).toBe(true);
+    expect(supportsServerFallback("claude-sonnet-5-5")).toBe(true);
+    expect(supportsServerFallback("claude-haiku-5-5")).toBe(false);
   });
 
   it("skeema hyväksyy kelvollisen päätöksen ja hylkää tuntemattoman toiminnon", () => {

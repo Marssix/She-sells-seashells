@@ -30,6 +30,13 @@ const CONFUSED: BuyerDecision = {
   price_eur: null,
 };
 
+/** Mallit, jotka tukevat palvelinpuolen varamallia (`fallbacks: "default"`). */
+const SERVER_FALLBACK_MODELS = ["claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"];
+
+export function supportsServerFallback(model: string): boolean {
+  return SERVER_FALLBACK_MODELS.includes(model);
+}
+
 export class BuyerUnavailableError extends Error {
   constructor(
     message: string,
@@ -63,8 +70,10 @@ export class ClaudeBuyer implements Buyer {
         model: this.config.ANTHROPIC_MODEL,
         max_tokens: 8000,
         // Jos turvallisuusluokitin hylkää pyynnön, API ajaa sen automaattisesti varamallilla.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
+        // Vain osa malleista tukee tätä (ei esim. Haiku), muilla kieltäytyminen käsitellään alla.
+        ...(supportsServerFallback(this.config.ANTHROPIC_MODEL)
+          ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
+          : {}),
         // Matala effort = nopeat vastaukset; keskustelu ei vaadi syvää päättelyä.
         output_config: { effort: this.config.ANTHROPIC_EFFORT, format: betaZodOutputFormat(BuyerDecisionSchema) },
         system: [{ type: "text", text: this.system, cache_control: { type: "ephemeral" } }],
