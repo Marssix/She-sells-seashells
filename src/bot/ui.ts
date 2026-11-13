@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "disc
 import { getPersona, type Persona } from "../content/personas.js";
 import { getProduct } from "../content/products.js";
 import type { UserStats } from "../db/stats.js";
-import { computeScore } from "../game/engine.js";
+import { computeScore, scoringValue } from "../game/engine.js";
 import type { Emotion, GameEvent, GameState, Outcome } from "../game/types.js";
 
 export const BUTTON = {
@@ -201,7 +201,7 @@ export function statsEmbed(stats: UserStats, name: string, avatarUrl?: string): 
   if (stats.bestSale) {
     const product = getProduct(stats.bestSale.productId);
     const persona = getPersona(stats.bestSale.personaId);
-    const ratio = stats.bestSale.priceEur / Math.max(stats.bestSale.trueValueEur, 0.1);
+    const ratio = stats.bestSale.priceEur / scoringValue(stats.bestSale.trueValueEur);
     embed.addFields({
       name: "🥇 Paras kauppa",
       value: `**${product?.name ?? stats.bestSale.productId}** → ${persona ? `${persona.emoji} ${persona.name}` : stats.bestSale.personaId}\n${eur(stats.bestSale.priceEur)} (${ratio >= 100 ? Math.round(ratio) : ratio.toFixed(1)}× arvo) · ${stats.bestSale.score} pistettä`,

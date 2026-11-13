@@ -12,6 +12,7 @@ import {
   roundPrice,
   RULES,
   sanitizeSellerText,
+  scoringValue,
 } from "../src/game/engine.js";
 import type { BuyerDecision, GameState } from "../src/game/types.js";
 
@@ -203,7 +204,11 @@ describe("maxPrice", () => {
 
   it("pyöristää järkevästi", () => {
     expect(roundPrice(12.6)).toBe(13);
-    expect(roundPrice(1.234)).toBe(1.2);
+    expect(roundPrice(1.234)).toBe(1.23);
+    // Discordissa: 5 sentin kauppa pyöristyi aiemmin 10 senttiin ja alle 5 sentin tarjous nollaan.
+    expect(roundPrice(0.05)).toBe(0.05);
+    expect(roundPrice(0.04)).toBe(0.04);
+    expect(roundPrice(0.004)).toBe(0);
     expect(roundPrice(-5)).toBe(0);
   });
 });
@@ -220,6 +225,28 @@ describe("pisteytys", () => {
     // 99 € / 1 € → log10(100) = 2 → 200, × 1.25 absurdius + 2 vuoroa × 5
     expect(plain).toMatchObject({ base: 200, absurdityMultiplier: 1.25, speedBonus: 10, total: 260 });
     expect(computeScore(sold(true)).total).toBe(Math.round(200 * 1.25 * 1.5 + 10));
+  });
+
+  it("laskee ylihinnan todellisesta arvosta myös alle 10 sentin tuotteille", () => {
+    // Discordissa: 2 sentin kolikko myytiin 5 sentillä → näytettiin 1,0×, oikea on 2,5×.
+    const s: GameState = {
+      ...game(),
+      product: { ...product, trueValueEur: 0.02, absurdity: 2 },
+      weaknessFound: true,
+      turnsLeft: 4,
+      status: "ended",
+      outcome: { type: "sold", priceEur: 0.05 },
+    };
+    const score = computeScore(s);
+    expect(score.ratio).toBeCloseTo(2.5);
+    expect(score.base).toBe(Math.round(100 * Math.log10(3.5))); // 54
+    expect(score.total).toBe(Math.round(54 * 1.25 * 1.5 + 20)); // 121
+  });
+
+  it("0 €:n tuotteella ylihinta lasketaan 0,10 €:a vasten", () => {
+    expect(scoringValue(0)).toBe(0.1);
+    expect(scoringValue(0.02)).toBe(0.02);
+    expect(scoringValue(5)).toBe(5);
   });
 
   it("ei jaa nollalla, kun tuotteen arvo on 0 €", () => {

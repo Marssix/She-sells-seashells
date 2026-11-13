@@ -50,10 +50,10 @@ export function createGame(persona: Persona, product: Product, sellerId: string)
   };
 }
 
-/** Pyöristää hinnan järkevästi: yli 10 € tasaeuroihin, muuten 10 sentin tarkkuuteen. */
+/** Pyöristää hinnan järkevästi: 10 € ja yli tasaeuroihin, sen alle sentin tarkkuuteen. */
 export function roundPrice(eur: number): number {
   if (!Number.isFinite(eur) || eur <= 0) return 0;
-  return eur >= 10 ? Math.round(eur) : Math.round(eur * 10) / 10;
+  return eur >= 10 ? Math.round(eur) : Math.round(eur * 100) / 100;
 }
 
 /**
@@ -216,13 +216,21 @@ export interface ScoreBreakdown {
 
 const ABSURDITY_MULTIPLIER = { 1: 1, 2: 1.25, 3: 1.5 } as const;
 
+/** Arvo, jota vasten ylihinta lasketaan 0 €:n tuotteille (esim. NFT pilvestä), jottei jaeta nollalla. */
+export const ZERO_VALUE_BASIS_EUR = 0.1;
+
+/** Tuotteen arvo ylihinnan laskemiseen: todellinen arvo, tai 0 €:n tuotteilla ZERO_VALUE_BASIS_EUR. */
+export function scoringValue(trueValueEur: number): number {
+  return trueValueEur > 0 ? trueValueEur : ZERO_VALUE_BASIS_EUR;
+}
+
 /**
  * Pisteet = 100 × log10(1 + hinta / todellinen arvo) × absurdiuskerroin × heikkousbonus + nopeusbonus.
  * Logaritmi pitää pisteet järkevinä myös, kun 0 €:n tuote myydään 500 €:lla.
  */
 export function computeScore(state: GameState): ScoreBreakdown {
   const sold = state.outcome?.type === "sold" ? state.outcome.priceEur : 0;
-  const ratio = sold / Math.max(state.product.trueValueEur, 0.1);
+  const ratio = sold / scoringValue(state.product.trueValueEur);
   const base = Math.round(100 * Math.log10(1 + ratio));
   const absurdityMultiplier = ABSURDITY_MULTIPLIER[state.product.absurdity];
   const weaknessMultiplier = state.weaknessFound ? 1.5 : 1;
