@@ -13,6 +13,11 @@ export interface Persona {
   weakness: string;
   /** Vihje, joka näytetään pelaajalle kortissa (ei paljasta suoraan). */
   weaknessHint: string;
+  /**
+   * Heikkouden aihe tosiasiakysymyksenä tekoälylle: "Käsitteleekö myyjä aihetta X?"
+   * Mallit tunnistavat aiheen luotettavasti, mutta "osuiko myyjä heikkouteen" -arvio jää liian varovaiseksi.
+   */
+  weaknessTopic: string;
   /** Kuinka paljon hahmolla on enintään rahaa käytettävissä (€). */
   budgetEur: number;
   /** 1 = helppo, 3 = vaikea */
@@ -42,6 +47,7 @@ export const personas: Persona[] = [
       "Puhuu kohteliaasti ja hieman jaarittelevasti, kertoo sivupolkuja kissastaan ja lapsenlapsistaan. Sanoo 'voi hyvänen aika' ja 'no kuulkaas'.",
     weakness: "Lapsenlapset: jos tuote esitetään lahjana tai tapana olla lähempänä Eetua ja Iidaa, hän heltyy täysin.",
     weaknessHint: "Hänellä on ikävä jotakuta.",
+    weaknessTopic: "lapsenlapset, tuote lahjana lapsenlapsille tai tapa viettää aikaa heidän kanssaan",
     budgetEur: 120,
     difficulty: 1,
     startInterest: 35,
@@ -63,6 +69,7 @@ export const personas: Persona[] = [
       "Lyhyt, kuiva, kysyy tarkentavia kysymyksiä. Sanoo 'perustele', 'mikä on takaisinmaksuaika' ja 'tuo ei ole vastaus kysymykseeni'.",
     weakness: "Verovähennykset: jos myyjä keksii tavan, jolla tuotteen voi vähentää verotuksessa, hän innostuu.",
     weaknessHint: "Hän inhoaa erästä valtion laitosta.",
+    weaknessTopic: "verot, verottaja, verovähennykset tai tuotteen kirjaaminen kuluksi",
     budgetEur: 400,
     difficulty: 3,
     startInterest: 20,
@@ -84,6 +91,7 @@ export const personas: Persona[] = [
       "Energinen, käyttää englanninkielisiä buzzwordeja ('bro', 'to the moon', 'game changer', 'scalable'). Innostuu helposti mutta kyllästyy nopeasti.",
     weakness: "FOMO: jos myyjä vihjaa, että tuotetta on rajoitetusti tai että muut jo ostavat sitä, hän ei pysty vastustamaan.",
     weaknessHint: "Hän ei kestä, että joku muu ehtii ensin.",
+    weaknessTopic: "tuotteen vähyys tai ainutlaatuisuus, kiire, muut kiinnostuneet ostajat tai paitsi jääminen",
     budgetEur: 800,
     difficulty: 1,
     startInterest: 45,
@@ -105,6 +113,7 @@ export const personas: Persona[] = [
       "Yksitavuinen ja ironinen: 'ok', 'cringe', 'no ei', 'ihan sama', 'vitsi'. Kirjoittaa pienellä. Innostuessaan puhuu nopeasti.",
     weakness: "Status ja some: jos tuotteella voi saada näkyvyyttä, seuraajia tai tehdä vaikutuksen kavereihin, hän haluaa sen heti.",
     weaknessHint: "Hän välittää paljon siitä, mitä muut ajattelevat.",
+    weaknessTopic: "some, seuraajat, näkyvyys, kaverit, suosio tai vaikutuksen tekeminen muihin",
     budgetEur: 60,
     difficulty: 2,
     startInterest: 15,
@@ -126,6 +135,7 @@ export const personas: Persona[] = [
       "Tuttavallinen ja ovela: 'kuule kaveri', 'tehdään näin', 'mä annan sulle tästä...'. Kehuu omia diilejään.",
     weakness: "Imartelu: jos myyjä kehuu hänen liikevainuaan tai sanoo vain hänen ymmärtävän tuotteen arvon, hän laskee suojauksensa.",
     weaknessHint: "Hän pitää itseään alansa parhaana.",
+    weaknessTopic: "Raimon liikevainun, kokemuksen tai osaamisen kehuminen",
     budgetEur: 300,
     difficulty: 3,
     startInterest: 25,

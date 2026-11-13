@@ -8,15 +8,20 @@ import type { Buyer } from "../game/session.js";
 import { BUYER_ACTIONS, EMOTIONS, type BuyerDecision, type GameState } from "../game/types.js";
 import { buildSystemPrompt, buildTurnMessage } from "./prompts.js";
 
-/** Rakenteinen vastaus. Numeerisia rajoja ei laiteta skeemaan, vaan pelimoottori rajaa arvot. */
+/**
+ * Rakenteinen vastaus. Numeerisia rajoja ei laiteta skeemaan, vaan pelimoottori rajaa arvot.
+ * Kenttäjärjestys on tarkoituksellinen: malli päättää ensin hinnat ja toiminnon ja kirjoittaa
+ * repliikin vasta lopuksi, jolloin repliikissä sanottu summa vastaa price_eur-kenttää.
+ */
 export const BuyerDecisionSchema = z.object({
-  reply: z.string(),
-  emotion: z.enum(EMOTIONS),
+  seller_asked_price_eur: z.number().nullable(),
   interest_delta: z.number(),
   suspicion_delta: z.number(),
   weakness_triggered: z.boolean(),
   action: z.enum(BUYER_ACTIONS),
   price_eur: z.number().nullable(),
+  emotion: z.enum(EMOTIONS),
+  reply: z.string(),
 });
 
 /** Näytetään, jos malli kieltäytyy tai vastaus ei jäsenny. Ei kuluta peliä rikki. */
@@ -28,6 +33,7 @@ const CONFUSED: BuyerDecision = {
   weakness_triggered: false,
   action: "continue",
   price_eur: null,
+  seller_asked_price_eur: null,
 };
 
 /** Mallit, jotka tukevat palvelinpuolen varamallia (`fallbacks: "default"`). */

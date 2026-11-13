@@ -26,6 +26,7 @@ const decision = (d: Partial<BuyerDecision> = {}): BuyerDecision => ({
   weakness_triggered: false,
   action: "continue",
   price_eur: null,
+  seller_asked_price_eur: null,
   ...d,
 });
 
@@ -47,6 +48,12 @@ describe("mittarit", () => {
 
     const { state: s2 } = applyDecision(game({ interest: 50 }), decision({ interest_delta: -999 }));
     expect(s2.interest).toBe(50 - RULES.maxDelta);
+  });
+
+  it("kertoo kiinnostuksen nousut mutta ei laskuja", () => {
+    expect(applyDecision(game({ interest: 40 }), decision({ interest_delta: 6 })).state.interest).toBe(40 + 9);
+    expect(applyDecision(game({ interest: 40 }), decision({ interest_delta: -6 })).state.interest).toBe(40 - 6);
+    expect(applyDecision(game({ interest: 40 }), decision({ interest_delta: 18 })).state.interest).toBe(40 + RULES.maxDelta);
   });
 
   it("kestää roskadataa (NaN, desimaalit)", () => {
@@ -109,6 +116,41 @@ describe("tarjoukset ja kaupat", () => {
     expect(sold.outcome).toEqual({ type: "sold", priceEur: 12 });
   });
 
+  it("kauppa syntyy myyjän hinnalla, jos ostaja tarjoaa enemmän kuin myyjä pyytää", () => {
+    // Simulaatiossa: myyjä pyysi 40 €, ostaja "tinki" 55 euroon.
+    const { state } = applyDecision(game({ interest: 70 }), decision({ action: "offer", price_eur: 55, seller_asked_price_eur: 40 }));
+    expect(state.outcome).toEqual({ type: "sold", priceEur: 40 });
+  });
+
+  it("hyväksyntä käyttää myyjän pyytämää hintaa, vaikka ostaja antaisi eri summan", () => {
+    const { state } = applyDecision(game({ interest: 70 }), decision({ action: "accept", price_eur: 60, seller_asked_price_eur: 25 }));
+    expect(state.outcome).toEqual({ type: "sold", priceEur: 25 });
+  });
+
+  it("hyväksyntä ilman summaa käyttää myyjän hintaa", () => {
+    const { state } = applyDecision(game({ interest: 70 }), decision({ action: "accept", price_eur: null, seller_asked_price_eur: 15 }));
+    expect(state.outcome).toEqual({ type: "sold", priceEur: 15 });
+  });
+
+  it("pienempi vastatarjous jää tarjoukseksi", () => {
+    const { state } = applyDecision(game({ interest: 70 }), decision({ action: "offer", price_eur: 20, seller_asked_price_eur: 40 }));
+    expect(state.status).toBe("active");
+    expect(state.currentOffer).toBe(20);
+  });
+
+  it("myyjän liian kallis hinta ei synny kaupaksi, vaan tarjous rajataan maksukykyyn", () => {
+    const s = game({ interest: 60, suspicion: 0 }); // maksukyky 50 €
+    const { state } = applyDecision(s, decision({ action: "accept", price_eur: 500, seller_asked_price_eur: 500 }));
+    expect(state.status).toBe("active");
+    expect(state.currentOffer).toBe(maxPrice(state));
+  });
+
+  it("myyjän hinta ei ohita kiinnostusrajaa", () => {
+    const { state, events } = applyDecision(game({ interest: 20 }), decision({ action: "accept", price_eur: 5, seller_asked_price_eur: 5 }));
+    expect(state.status).toBe("active");
+    expect(events[0]).toMatchObject({ type: "action_blocked" });
+  });
+
   it("ei hyväksy, jos tarjousta ei ole", () => {
     const s = game();
     expect(acceptOffer(s).state).toBe(s);
@@ -153,7 +195,8 @@ describe("pelin päättyminen", () => {
 
 describe("maxPrice", () => {
   it("on nolla matalalla kiinnostuksella ja budjetti täydellä luottamuksella", () => {
-    expect(maxPrice({ persona, interest: 30, suspicion: 0 })).toBe(0);
+    expect(maxPrice({ persona, interest: 20, suspicion: 0 })).toBe(0);
+    expect(maxPrice({ persona, interest: RULES.minInterestToBuy, suspicion: 0 })).toBeGreaterThan(0);
     expect(maxPrice({ persona, interest: 100, suspicion: 0 })).toBe(100);
     expect(maxPrice({ persona, interest: 100, suspicion: 100 })).toBe(50);
   });

@@ -26,6 +26,8 @@ export interface BuyerDecision {
   action: BuyerAction;
   /** offer: ostajan tarjous. accept: myyjän pyytämä hinta, jonka ostaja hyväksyy. */
   price_eur: number | null;
+  /** Myyjän viimeisin pyytämä hinta, jos myyjä on nimennyt sellaisen. Moottori käyttää tätä kaupan päättämiseen. */
+  seller_asked_price_eur: number | null;
 }
 
 export type Outcome =

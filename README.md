@@ -8,7 +8,7 @@ Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 1. `/kauppa aloita [ostaja]`: botti avaa ketjun, jossa saat satunnaisen tuotteen ja ostajan.
 2. Kirjoita myyntipuheesi ketjuun. Ostaja (Claude) vastaa hahmossa.
 3. Seuraa mittareita:
-   - 💚 **Kiinnostus**: ostaja tekee tarjouksia vasta, kun kiinnostus on vähintään 50.
+   - 💚 **Kiinnostus**: ostaja tekee tarjouksia vasta, kun kiinnostus on vähintään 40. Hyvät perustelut nostavat sitä nopeasti.
    - 🔴 **Epäluulo**: kun se on 100, ostaja sulkee puhelun. Mitä korkeampi epäluulo, sitä vähemmän ostaja maksaa.
    - ⏳ **Kärsivällisyys**: jokainen puheenvuoro kuluttaa yhden.
 4. Etsi ostajan **salainen heikkous**. Kortissa on vihje, ja osuma antaa kiinnostusbonuksen ja ×1,5 pisteet.
@@ -88,7 +88,7 @@ tests/
 
 **Tärkeä periaate:** tekoäly vain *ehdottaa* (mittarimuutokset, tarjous, lähteminen). `game/engine.ts` päättää, mitä oikeasti tapahtuu:
 - muutokset rajataan ±20:een
-- tarjoukset estetään, jos kiinnostus on alle 50
+- tarjoukset estetään, jos kiinnostus on alle 40
 - hinta rajataan ostajan maksukykyyn
 - myyjän teksti siistitään
 

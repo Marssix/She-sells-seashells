@@ -17,6 +17,7 @@ const base: BuyerDecision = {
   weakness_triggered: false,
   action: "continue",
   price_eur: null,
+  seller_asked_price_eur: null,
 };
 
 /** Skriptattu ostaja: palauttaa annetut päätökset järjestyksessä ja tallentaa mitä se näki. */
@@ -37,7 +38,7 @@ describe("GameSession", () => {
     const s = new GameSession(persona, product, "u1", buyer);
     const r = await s.handleSellerMessage("  Hei <b>Pirkko</b>!  ");
     expect(buyer.seen[0]!.text).toBe("Hei ‹b›Pirkko‹/b›!");
-    expect(r.state.interest).toBe(persona.startInterest + 10);
+    expect(r.state.interest).toBe(persona.startInterest + 15); // +10 × kerroin 1,5
     expect(s.state.transcript.map((l) => l.speaker)).toEqual(["buyer", "seller", "buyer"]);
   });
 
@@ -79,6 +80,7 @@ describe("promptit", () => {
     const a = buildSystemPrompt(persona, product);
     expect(a).toBe(buildSystemPrompt(persona, product));
     expect(a).toContain(persona.weakness);
+    expect(a).toContain(persona.weaknessTopic);
     expect(a).toContain(product.description);
   });
 
@@ -88,6 +90,9 @@ describe("promptit", () => {
     expect(msg).toContain("<myyjan_puhe>Ostakaa!</myyjan_puhe>");
     expect(msg).toContain(`Kiinnostus: ${s.interest}/100`);
     expect(msg).not.toContain("viimeinen vuorosi");
+    expect(buildTurnMessage({ ...s, interest: 10 }, "x")).toContain("Voit tehdä tarjouksia tai hyväksyä hinnan: ei vielä");
+    expect(buildTurnMessage({ ...s, interest: 60, suspicion: 10 }, "x")).toContain("Voit tehdä tarjouksia tai hyväksyä hinnan: kyllä");
+    expect(buildTurnMessage({ ...s, interest: 60, suspicion: 90 }, "x")).toContain("epäluulosi on liian suuri");
     expect(buildTurnMessage({ ...s, turnsLeft: 1 }, "x")).toContain("viimeinen vuorosi");
   });
 

@@ -9,10 +9,15 @@ import type { BuyerDecision, GameEvent, GameState, Outcome } from "./types.js";
 export const RULES = {
   /** Mittarin suurin muutos yhdellä vuorolla. */
   maxDelta: 20,
+  /**
+   * Kiinnostuksen nousut kerrotaan tällä. Malli antaa hyvillekin myyntipuheille varovaisia lukuja (+3…+8),
+   * jolloin kiinnostus ei ehdi nousta tarjousrajalle. Laskut pidetään ennallaan.
+   */
+  interestGainMultiplier: 1.5,
   /** Kiinnostusbonus, kun heikkous löytyy ensimmäisen kerran. */
   weaknessInterestBonus: 15,
   /** Ostaja voi tehdä tarjouksen tai hyväksyä hinnan vasta tästä kiinnostuksesta alkaen. */
-  minInterestToBuy: 50,
+  minInterestToBuy: 40,
   /** Ostaja ei osta, jos epäluulo on tätä suurempi. */
   maxSuspicionToBuy: 80,
   /** Ostaja saa lähteä vain, jos epäluulo on vähintään tämä... */
@@ -56,7 +61,7 @@ export function roundPrice(eur: number): number {
  * Kasvaa kiinnostuksen myötä ja pienenee epäluulon myötä. Katto on hahmon budjetti.
  */
 export function maxPrice(state: Pick<GameState, "persona" | "interest" | "suspicion">): number {
-  const interestFactor = clamp((state.interest - 30) / 70, 0, 1);
+  const interestFactor = clamp((state.interest - 20) / 80, 0, 1);
   const trustFactor = 1 - clamp(state.suspicion, 0, 100) / 200;
   return roundPrice(state.persona.budgetEur * interestFactor * trustFactor);
 }
@@ -95,7 +100,9 @@ export function applyDecision(prev: GameState, decision: BuyerDecision): { state
   };
 
   // 1. Mittarit (rajattuina)
-  let interest = state.interest + clamp(toInt(decision.interest_delta), -RULES.maxDelta, RULES.maxDelta);
+  const rawInterest = toInt(decision.interest_delta);
+  const interestDelta = rawInterest > 0 ? Math.round(rawInterest * RULES.interestGainMultiplier) : rawInterest;
+  let interest = state.interest + clamp(interestDelta, -RULES.maxDelta, RULES.maxDelta);
   const suspicion = state.suspicion + clamp(toInt(decision.suspicion_delta), -RULES.maxDelta, RULES.maxDelta);
 
   if (decision.weakness_triggered && !state.weaknessFound) {
@@ -118,7 +125,9 @@ export function applyDecision(prev: GameState, decision: BuyerDecision): { state
   switch (decision.action) {
     case "accept":
     case "offer": {
-      const requested = roundPrice(decision.price_eur ?? 0);
+      const asked = roundPrice(decision.seller_asked_price_eur ?? 0);
+      // Hyväksyntä ilman omaa summaa tarkoittaa myyjän pyytämää hintaa.
+      const requested = roundPrice(decision.price_eur ?? (decision.action === "accept" ? asked : 0));
       if (!canBuy) {
         events.push({ type: "action_blocked", action: decision.action, reason: "kiinnostus liian matala tai epäluulo liian korkea" });
         break;
@@ -127,6 +136,13 @@ export function applyDecision(prev: GameState, decision: BuyerDecision): { state
         events.push({ type: "action_blocked", action: decision.action, reason: "ei kelvollista hintaa" });
         break;
       }
+
+      // Ostaja ei koskaan maksa enempää kuin myyjä pyytää: jos ostaja hyväksyy tai tarjoaa vähintään
+      // myyjän pyytämän hinnan ja sillä on varaa siihen, kauppa syntyy myyjän hinnalla.
+      if (asked > 0 && asked <= cap && (decision.action === "accept" || requested >= asked)) {
+        return { state: end(state, { type: "sold", priceEur: asked }, events), events };
+      }
+
       const price = Math.min(requested, cap);
       if (price < requested) events.push({ type: "offer_capped", requestedEur: requested, priceEur: price });
 
