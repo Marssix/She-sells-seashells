@@ -64,7 +64,8 @@ Komennot pelin aikana: `/hyvaksy`, `/hylkaa`, `/luovuta`, `/debug`. Terminaali n
 |---|---|
 | `npm run dev` | Kehitystila (tsx watch) |
 | `npm run play` | Pelitesti terminaalissa |
-| `npm run deploy-commands` | Rekisteröi slash-komennot (aja aina, kun komentoja lisätään tai muutetaan) |
+| `npm run deploy-commands` | Rekisteröi slash-komennot vain `DISCORD_GUILD_ID`-testipalvelimelle (päivittyy heti) |
+| `npm run deploy-commands -- --global` | Rekisteröi komennot kaikille palvelimille, joilla botti on, ja poistaa testipalvelimen kopiot |
 | `npm test` | Vitest-testit |
 | `npm run typecheck` / `npm run lint` | Tyyppi- ja tyylitarkistus |
 | `npm run build` && `npm start` | Tuotantobuildi `dist/`-kansioon ja ajo |
