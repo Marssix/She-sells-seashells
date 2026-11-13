@@ -9,16 +9,20 @@ import {
 import { BuyerUnavailableError } from "../ai/buyer.js";
 import { getPersona, personas } from "../content/personas.js";
 import { products } from "../content/products.js";
+import { toRoundRecord, type StatsRepository } from "../db/stats.js";
 import { GameSession, type BuyerFactory } from "../game/session.js";
 import type { GameEvent } from "../game/types.js";
 import { BUTTON, buyerLine, eventNotes, resultEmbed, statusButtons, statusEmbed } from "./ui.js";
 
 /** Kauan ostaja odottaa myyjän seuraavaa viestiä. */
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+/** Kauanko ketju pysyy auki pelin päätyttyä, jotta tuloksen ehtii nähdä. */
+const ARCHIVE_DELAY_MS = 60 * 1000;
 
 interface ActiveGame {
   session: GameSession;
   thread: ThreadChannel;
+  guildId: string;
   statusMessage: Message;
   sellerName: string;
   idleTimer: NodeJS.Timeout;
@@ -31,7 +35,10 @@ export class GameManager {
   private readonly games = new Map<string, ActiveGame>();
   private readonly threadByUser = new Map<string, string>();
 
-  constructor(private readonly buyerFactory: BuyerFactory) {}
+  constructor(
+    private readonly buyerFactory: BuyerFactory,
+    private readonly stats: StatsRepository | null = null,
+  ) {}
 
   async start(interaction: ChatInputCommandInteraction, personaId: string | null): Promise<void> {
     const existing = this.threadByUser.get(interaction.user.id);
@@ -66,7 +73,14 @@ export class GameManager {
     await thread.send(buyerLine(persona, persona.greeting));
     await thread.send(`-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`);
 
-    this.games.set(thread.id, { session, thread, statusMessage, sellerName, idleTimer: this.armIdleTimer(thread.id) });
+    this.games.set(thread.id, {
+      session,
+      thread,
+      guildId: channel.guildId,
+      statusMessage,
+      sellerName,
+      idleTimer: this.armIdleTimer(thread.id),
+    });
     this.threadByUser.set(interaction.user.id, thread.id);
   }
 
@@ -100,8 +114,8 @@ export class GameManager {
     } catch (err) {
       clearInterval(typing);
       if (err instanceof BuyerUnavailableError) {
-        console.error("Ostaja ei vastannut:", err.message);
-        await message.reply(`⚠️ Ostaja ei kuullut sinua (${err.message}). ${err.retryable ? "Yritä uudelleen." : ""}`);
+        console.error("Ostaja ei vastannut:", err.detail);
+        await message.reply(`⚠️ ${err.message}\n-# Viestisi ei kuluttanut vuoroa.`);
         return;
       }
       throw err;
@@ -139,8 +153,31 @@ export class GameManager {
       clearTimeout(game.idleTimer);
       this.games.delete(thread.id);
       this.threadByUser.delete(session.state.sellerId);
-      await thread.send({ embeds: [resultEmbed(session.state, sellerName)] });
+      this.saveStats(game);
+      await thread.send({
+        content: "-# Ketju arkistoidaan minuutin kuluttua. Katso omat tilastosi: `/kauppa stats`",
+        embeds: [resultEmbed(session.state, sellerName)],
+      });
       console.log(`Kauppa päättyi: ${sellerName} / ${session.state.persona.id} / ${session.state.outcome?.type}`);
+      setTimeout(() => void this.archive(thread), ARCHIVE_DELAY_MS);
+    }
+  }
+
+  private saveStats(game: ActiveGame): void {
+    if (!this.stats) return;
+    try {
+      this.stats.recordRound(toRoundRecord(game.session.state, game.guildId));
+    } catch (err) {
+      // Tilastojen tallennusvirhe ei saa kaataa peliä.
+      console.error("Tilastojen tallennus epäonnistui:", err);
+    }
+  }
+
+  private async archive(thread: ThreadChannel): Promise<void> {
+    try {
+      await thread.setArchived(true, "Kauppa päättyi");
+    } catch (err) {
+      console.warn(`Ketjun ${thread.id} arkistointi epäonnistui (puuttuuko Manage Threads -oikeus?):`, err instanceof Error ? err.message : err);
     }
   }
 

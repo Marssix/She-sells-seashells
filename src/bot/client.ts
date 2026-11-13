@@ -1,9 +1,10 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { buildCommands } from "../commands/index.js";
+import type { StatsRepository } from "../db/stats.js";
 import type { GameManager } from "./games.js";
 
-export function createClient(games: GameManager): Client {
-  const commands = buildCommands(games);
+export function createClient(games: GameManager, stats: StatsRepository | null): Client {
+  const commands = buildCommands(games, stats);
 
   const client = new Client({
     intents: [

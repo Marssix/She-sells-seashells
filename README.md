@@ -16,7 +16,14 @@ Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 
 **Pisteet** = 100 × log10(1 + hinta / todellinen arvo) × absurdiuskerroin (1–1,5) × heikkousbonus + 5 per säästetty vuoro.
 
-`/kauppa ostajat` näyttää kaikki ostajat vihjeineen.
+Ketju arkistoituu minuutti pelin päättymisen jälkeen.
+
+Muut komennot:
+- `/kauppa ostajat`: kaikki ostajat vihjeineen.
+- `/kauppa stats [pelaaja]`: myyntitilastot tällä palvelimella (kaupat, myynti yhteensä, pisteet, paras kauppa, ostajakohtaiset tulokset, titteli).
+- `/kauppa unohda vahvista:True`: poistaa omat tilastosi tältä palvelimelta.
+
+Tilastot tallennetaan SQLite-tietokantaan `data/kauppa.sqlite` (Noden sisäänrakennettu `node:sqlite`, ei lisäriippuvuuksia). Polun voi vaihtaa `.env`-tiedoston asetuksella `DATABASE_PATH`.
 
 ## Käyttöönotto
 
@@ -74,7 +81,7 @@ src/
   content/        # ostajapersoonat ja tuotteet
   cli/            # terminaalipelitesti
   voice/          # STT/TTS/äänikanava (vaihe 2)
-  db/             # tallennus (vaihe 4)
+  db/             # pelitilastot (SQLite)
 tests/
 ```
 

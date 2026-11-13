@@ -61,7 +61,7 @@ while (session.state.status !== "ended") {
       console.log(`   ${meters(state)}   [${decision.action}${decision.price_eur !== null ? ` ${decision.price_eur} €` : ""}, ${Date.now() - started} ms]`);
       printEvents(events);
     } catch (err) {
-      if (err instanceof BuyerUnavailableError) console.log(`   ⚠️  ${err.message}`);
+      if (err instanceof BuyerUnavailableError) console.log(`   ⚠️  ${err.message}\n      (${err.detail})`);
       else throw err;
     }
   }

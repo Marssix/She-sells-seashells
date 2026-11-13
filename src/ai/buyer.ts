@@ -37,10 +37,15 @@ export function supportsServerFallback(model: string): boolean {
   return SERVER_FALLBACK_MODELS.includes(model);
 }
 
+/**
+ * Ostaja ei pystynyt vastaamaan. `message` näytetään pelaajalle,
+ * `detail` sisältää teknisen syyn lokia varten.
+ */
 export class BuyerUnavailableError extends Error {
   constructor(
     message: string,
     readonly retryable: boolean,
+    readonly detail: string = message,
   ) {
     super(message);
   }
@@ -95,22 +100,37 @@ export class ClaudeBuyer implements Buyer {
   }
 }
 
-function toBuyerError(err: unknown): BuyerUnavailableError {
-  if (err instanceof Anthropic.AuthenticationError) {
-    return new BuyerUnavailableError("Anthropic API-avain puuttuu tai on virheellinen.", false);
+/** Muuntaa API-virheen pelaajalle ymmärrettäväksi viestiksi. Tarkimmasta yleisimpään. */
+export function toBuyerError(err: unknown): BuyerUnavailableError {
+  const detail = err instanceof Anthropic.APIError ? `API ${err.status ?? "?"}: ${err.message}` : err instanceof Error ? err.message : String(err);
+
+  if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+    return new BuyerUnavailableError("Ostajan tekoälyyn ei saada yhteyttä: API-avain puuttuu tai on virheellinen. Ilmoita botin ylläpitäjälle.", false, detail);
   }
   if (err instanceof Anthropic.RateLimitError) {
-    return new BuyerUnavailableError("Liikaa pyyntöjä, odota hetki.", true);
+    return new BuyerUnavailableError("Ostaja on hetken ruuhkautunut. Odota hetki ja yritä uudelleen.", true, detail);
   }
   if (err instanceof Anthropic.BadRequestError) {
-    return new BuyerUnavailableError(`Virheellinen pyyntö: ${err.message}`, false);
+    return new BuyerUnavailableError("Ostajalle lähteneessä pyynnössä oli virhe. Ilmoita botin ylläpitäjälle.", false, detail);
+  }
+  // Palvelinpuolen häiriöt (5xx), aikakatkaisut ja verkkovirheet: tilapäisiä.
+  if (err instanceof Anthropic.APIConnectionError || (err instanceof Anthropic.APIError && (err.status ?? 0) >= 500)) {
+    return new BuyerUnavailableError("Ostaja ei saanut yhteyttä: tekoälypalvelussa on hetkellinen häiriö. Yritä hetken päästä uudelleen.", true, detail);
   }
   if (err instanceof Anthropic.APIError) {
-    return new BuyerUnavailableError(`API-virhe ${err.status ?? ""}: ${err.message}`, true);
+    return new BuyerUnavailableError("Ostaja ei pystynyt vastaamaan. Yritä uudelleen.", true, detail);
   }
-  return new BuyerUnavailableError(err instanceof Error ? err.message : String(err), true);
+  // Esim. puuttuvat tunnukset: SDK heittää tavallisen Errorin ennen pyyntöä.
+  return new BuyerUnavailableError("Ostaja ei pystynyt vastaamaan. Jos tämä toistuu, ilmoita botin ylläpitäjälle.", true, detail);
 }
 
-export function createClaudeBuyerFactory(config: AiConfig, client: Anthropic = new Anthropic()) {
+/**
+ * Uudelleenyritykset: SDK yrittää automaattisesti uudelleen 408/409/429/5xx-virheillä ja verkkovirheillä
+ * kasvavalla viiveellä. Oletus 2 ei riittänyt lyhyisiin häiriöihin, joten käytetään 4:ää.
+ * Aikakatkaisu per yritys pitää pelaajan odotuksen kohtuullisena.
+ */
+export const CLIENT_OPTIONS = { maxRetries: 4, timeout: 30_000 } as const;
+
+export function createClaudeBuyerFactory(config: AiConfig, client: Anthropic = new Anthropic(CLIENT_OPTIONS)) {
   return (persona: Persona, product: Product): Buyer => new ClaudeBuyer(client, config, persona, product);
 }

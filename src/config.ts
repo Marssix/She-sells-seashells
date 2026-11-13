@@ -11,6 +11,8 @@ const EnvSchema = z.object({
   DISCORD_CLIENT_ID: z.string().min(1, "DISCORD_CLIENT_ID puuttuu (.env)"),
   DISCORD_GUILD_ID: optional,
 
+  DATABASE_PATH: optional.transform((v) => v ?? "data/kauppa.sqlite"),
+
   ANTHROPIC_API_KEY: optional,
 
   STT_PROVIDER: z.enum(["deepgram", "azure"]).default("deepgram"),

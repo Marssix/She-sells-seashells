@@ -1,5 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
-import type { Persona } from "../content/personas.js";
+import { getPersona, type Persona } from "../content/personas.js";
+import { getProduct } from "../content/products.js";
+import type { UserStats } from "../db/stats.js";
 import { computeScore } from "../game/engine.js";
 import type { Emotion, GameEvent, GameState, Outcome } from "../game/types.js";
 
@@ -144,6 +146,89 @@ export function resultEmbed(state: GameState, sellerName: string): EmbedBuilder 
     embed.addFields({ name: "🏆 Pisteet", value: "0", inline: true });
     if (!state.weaknessFound) embed.addFields({ name: "🔍 Heikkous olisi ollut", value: state.persona.weakness });
   }
+  return embed;
+}
+
+const RANKS: { minScore: number; title: string }[] = [
+  { minScore: 5000, title: "🏜️ Myi Hiekkaa Saharaan" },
+  { minScore: 2500, title: "🚀 Kryptoprofeetta" },
+  { minScore: 1000, title: "📞 Puhelinmyyjä" },
+  { minScore: 250, title: "🥕 Torikauppias" },
+  { minScore: 0, title: "🧺 Kirpparimyyjä" },
+];
+
+/** Myyjän titteli kokonaispisteiden perusteella. */
+export function rankTitle(totalScore: number): { title: string; next: { title: string; minScore: number } | null } {
+  const index = RANKS.findIndex((r) => totalScore >= r.minScore);
+  const current = RANKS[index] ?? RANKS[RANKS.length - 1]!;
+  return { title: current.title, next: index > 0 ? RANKS[index - 1]! : null };
+}
+
+const OUTCOME_EMOJI: Record<Outcome["type"], string> = {
+  sold: "💰",
+  hung_up: "📵",
+  walked_away: "🚶",
+  timeout: "⌛",
+  gave_up: "🏳️",
+};
+
+const OUTCOME_LABEL: Record<Outcome["type"], string> = {
+  sold: "myyty",
+  hung_up: "puhelu suljettu",
+  walked_away: "ostaja lähti",
+  timeout: "aika loppui",
+  gave_up: "luovutettu",
+};
+
+export function statsEmbed(stats: UserStats, name: string, avatarUrl?: string): EmbedBuilder {
+  const embed = new EmbedBuilder().setColor(COLORS.active).setAuthor({ name: `${name}: myyntitilastot`, iconURL: avatarUrl });
+
+  if (stats.played === 0) {
+    return embed.setDescription("Ei vielä yhtään kauppaa. Aloita komennolla `/kauppa aloita`!");
+  }
+
+  const rank = rankTitle(stats.totalScore);
+  const winRate = Math.round((stats.sold / stats.played) * 100);
+  embed.setTitle(rank.title);
+  if (rank.next) embed.setDescription(`-# Seuraava titteli ${rank.next.title}: ${rank.next.minScore - stats.totalScore} pistettä jäljellä`);
+
+  embed.addFields(
+    { name: "🎮 Kauppoja", value: `${stats.sold}/${stats.played} (${winRate} %)`, inline: true },
+    { name: "💶 Myynti yhteensä", value: eur(stats.totalRevenueEur), inline: true },
+    { name: "🏆 Pisteet", value: `${stats.totalScore} (paras ${stats.bestScore})`, inline: true },
+  );
+
+  if (stats.bestSale) {
+    const product = getProduct(stats.bestSale.productId);
+    const persona = getPersona(stats.bestSale.personaId);
+    const ratio = stats.bestSale.priceEur / Math.max(stats.bestSale.trueValueEur, 0.1);
+    embed.addFields({
+      name: "🥇 Paras kauppa",
+      value: `**${product?.name ?? stats.bestSale.productId}** → ${persona ? `${persona.emoji} ${persona.name}` : stats.bestSale.personaId}\n${eur(stats.bestSale.priceEur)} (${ratio >= 100 ? Math.round(ratio) : ratio.toFixed(1)}× arvo) · ${stats.bestSale.score} pistettä`,
+    });
+  }
+
+  embed.addFields(
+    {
+      name: "🧑‍🤝‍🧑 Ostajat (myyty/pelattu)",
+      value: stats.perPersona
+        .map((r) => {
+          const p = getPersona(r.personaId);
+          return `${p?.emoji ?? "❔"} ${p?.name ?? r.personaId} ${r.sold}/${r.played}`;
+        })
+        .join("\n"),
+      inline: true,
+    },
+    {
+      name: "📊 Lopputulokset",
+      value: (Object.keys(OUTCOME_LABEL) as Outcome["type"][])
+        .filter((o) => stats.outcomes[o])
+        .map((o) => `${OUTCOME_EMOJI[o]} ${OUTCOME_LABEL[o]}: ${stats.outcomes[o]}`)
+        .join("\n"),
+      inline: true,
+    },
+    { name: "✨ Heikkouksia löydetty", value: `${stats.weaknessesFound}`, inline: true },
+  );
   return embed;
 }
 

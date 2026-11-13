@@ -5,3 +5,6 @@ dist/
 *.sqlite
 *.sqlite-journal
 coverage/
+data/
+*.sqlite-wal
+*.sqlite-shm

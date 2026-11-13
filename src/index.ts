@@ -2,6 +2,7 @@ import { loadAiConfig, loadConfig } from "./config.js";
 import { createClient } from "./bot/client.js";
 import { GameManager } from "./bot/games.js";
 import { createClaudeBuyerFactory } from "./ai/buyer.js";
+import { StatsRepository } from "./db/stats.js";
 
 const config = loadConfig();
 const aiConfig = loadAiConfig();
@@ -11,12 +12,16 @@ if (!config.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
 }
 console.log(`🤖 Ostajan malli: ${aiConfig.ANTHROPIC_MODEL} (effort: ${aiConfig.ANTHROPIC_EFFORT})`);
 
-const games = new GameManager(createClaudeBuyerFactory(aiConfig));
-const client = createClient(games);
+const stats = new StatsRepository(config.DATABASE_PATH);
+console.log(`💾 Tilastot: ${config.DATABASE_PATH}`);
+
+const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats);
+const client = createClient(games, stats);
 
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} vastaanotettu, suljetaan...`);
   await client.destroy();
+  stats.close();
   process.exit(0);
 };
 process.on("SIGINT", () => void shutdown("SIGINT"));
