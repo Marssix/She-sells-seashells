@@ -30,10 +30,23 @@ interface ActiveGame {
 
 const pick = <T>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]!;
 
+/** Pelien ketjujen nimen alku. Tästä tunnistetaan botin peliketjut myös uudelleenkäynnistyksen jälkeen. */
+export const GAME_THREAD_PREFIX = "🛒 ";
+
+export const NO_ACTIVE_GAME_MESSAGE =
+  "Tässä ketjussa ei ole enää käynnissä olevaa kauppaa: se on päättynyt tai katkesi botin uudelleenkäynnistyksen takia. Aloita uusi komennolla `/kauppa aloita`.";
+
+/** Onko kanava botin luoma peliketju, jolle ei ole muistissa käynnissä olevaa peliä. */
+export function isGameThread(channel: { isThread(): boolean; ownerId?: string | null; name?: string | null }, botUserId: string): boolean {
+  return channel.isThread() && channel.ownerId === botUserId && (channel.name ?? "").startsWith(GAME_THREAD_PREFIX);
+}
+
 /** Pitää kirjaa käynnissä olevista peleistä (ketju = yksi peli). */
 export class GameManager {
   private readonly games = new Map<string, ActiveGame>();
   private readonly threadByUser = new Map<string, string>();
+  /** Ketjut, joihin on jo kerrottu, ettei peliä ole käynnissä (ei toisteta joka viestiin). */
+  private readonly notifiedThreads = new Set<string>();
 
   constructor(
     private readonly buyerFactory: BuyerFactory,
@@ -64,7 +77,7 @@ export class GameManager {
     if (!announce) throw new Error("Aloitusviestiä ei saatu.");
 
     const thread = await announce.startThread({
-      name: `🛒 ${sellerName} → ${persona.name}`.slice(0, 100),
+      name: `${GAME_THREAD_PREFIX}${sellerName} → ${persona.name}`.slice(0, 100),
       autoArchiveDuration: 60,
     });
 
@@ -87,7 +100,11 @@ export class GameManager {
   async onMessage(message: Message): Promise<void> {
     if (message.author.bot) return;
     const game = this.games.get(message.channelId);
-    if (!game || message.author.id !== game.session.state.sellerId) return;
+    if (!game) {
+      await this.notifyNoActiveGame(message);
+      return;
+    }
+    if (message.author.id !== game.session.state.sellerId) return;
 
     const { session, thread } = game;
     if (session.state.status === "final_offer") {
@@ -125,7 +142,7 @@ export class GameManager {
   async onButton(interaction: ButtonInteraction): Promise<void> {
     const game = this.games.get(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "Tämä kauppa on jo päättynyt.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: NO_ACTIVE_GAME_MESSAGE, flags: MessageFlags.Ephemeral });
       return;
     }
     if (interaction.user.id !== game.session.state.sellerId) {
@@ -161,6 +178,17 @@ export class GameManager {
       console.log(`Kauppa päättyi: ${sellerName} / ${session.state.persona.id} / ${session.state.outcome?.type}`);
       setTimeout(() => void this.archive(thread), ARCHIVE_DELAY_MS);
     }
+  }
+
+  /**
+   * Botin muistissa ei ole peliä tälle ketjulle (peli päättyi tai botti käynnistyi uudelleen).
+   * Kerrotaan siitä kerran ketjua kohden, ettei botti vain ohita viestejä hiljaa.
+   */
+  private async notifyNoActiveGame(message: Message): Promise<void> {
+    const botId = message.client.user.id;
+    if (!isGameThread(message.channel, botId) || this.notifiedThreads.has(message.channelId)) return;
+    this.notifiedThreads.add(message.channelId);
+    await message.reply(NO_ACTIVE_GAME_MESSAGE).catch((err) => console.warn("Ilmoitus katkenneeseen ketjuun epäonnistui:", err));
   }
 
   private saveStats(game: ActiveGame): void {

@@ -27,4 +27,18 @@ const shutdown = async (signal: string) => {
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
+// Käsittelemätön lupausvirhe kaataisi Noden oletuksena koko botin ja kaikki käynnissä olevat pelit.
+// Kirjataan se lokiin ja jatketaan: yksittäinen epäonnistunut Discord- tai API-kutsu ei saa pysäyttää muita pelejä.
+process.on("unhandledRejection", (reason) => {
+  console.error("Käsittelemätön virhe (botti jatkaa):", reason);
+});
+
+// Synkroninen poikkeus voi jättää prosessin epävakaaseen tilaan: kirjataan ja lopetetaan hallitusti,
+// jolloin pm2 käynnistää botin puhtaasti uudelleen.
+process.on("uncaughtException", (err) => {
+  console.error("Kaatava virhe, botti käynnistetään uudelleen:", err);
+  stats.close();
+  process.exit(1);
+});
+
 await client.login(config.DISCORD_TOKEN);

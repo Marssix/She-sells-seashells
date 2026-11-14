@@ -21,6 +21,15 @@ export function createClient(games: GameManager, stats: StatsRepository | null):
     console.log(`✅ Kirjautunut: ${c.user.tag} · palvelimia: ${c.guilds.cache.size}`);
   });
 
+  // Ilman 'error'-kuuntelijaa Node kaataa koko prosessin, kun Discord-yhteydessä tapahtuu virhe.
+  // discord.js yhdistää uudelleen itse, joten riittää kirjata tapahtumat lokiin.
+  client.on(Events.Error, (err) => console.error("Discord-asiakkaan virhe:", err));
+  client.on(Events.Warn, (msg) => console.warn("Discord-varoitus:", msg));
+  client.on(Events.ShardError, (err, shardId) => console.error(`Discord-yhteyden virhe (shard ${shardId}):`, err));
+  client.on(Events.ShardDisconnect, (event, shardId) => console.warn(`Discord-yhteys katkesi (shard ${shardId}, koodi ${event.code}).`));
+  client.on(Events.ShardReconnecting, (shardId) => console.warn(`Yhdistetään Discordiin uudelleen (shard ${shardId})...`));
+  client.on(Events.ShardResume, (shardId, replayed) => console.log(`Discord-yhteys palautui (shard ${shardId}, ${replayed} tapahtumaa).`));
+
   client.on(Events.MessageCreate, (message) => {
     games.onMessage(message).catch((err) => console.error("Virhe viestin käsittelyssä:", err));
   });
