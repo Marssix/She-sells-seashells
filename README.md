@@ -51,6 +51,19 @@ npm run deploy-commands   # rekisteröi slash-komennot testipalvelimelle
 npm run dev               # käynnistää botin, käynnistyy uudelleen muutoksista
 ```
 
+### Botti taustalle (pm2)
+`npm run dev` pyörii vain niin kauan kuin terminaali on auki. Pysyvää käyttöä varten botti ajetaan **pm2**-prosessinhallinnalla. Silloin se pysyy päällä terminaalin sulkemisen jälkeen, käynnistyy itsestään uudelleen kaatuessaan ja kirjoittaa lokit tiedostoihin `logs/bot-out.log` ja `logs/bot-error.log`.
+```bash
+npm run bot:start     # kääntää koodin ja käynnistää botin taustalle
+npm run bot:status    # onko botti päällä, montako uudelleenkäynnistystä
+npm run bot:logs      # viimeisimmät lokirivit (Ctrl+C lopettaa seuraamisen)
+npm run bot:restart   # koodimuutosten jälkeen: kääntää ja käynnistää uudelleen
+npm run bot:stop      # pysäyttää botin
+```
+**Älä aja `npm run dev`:iä samaan aikaan pm2:n kanssa**, muuten kaksi bottia vastaa samoihin komentoihin. Pysäytä taustabotti ensin komennolla `npm run bot:stop`.
+
+pm2 ei käynnisty itsestään Windowsin uudelleenkäynnistyksen jälkeen. Aja silloin `npm run bot:start`.
+
 ### Pelaa terminaalissa (ilman Discordia)
 Tarvitset vain `ANTHROPIC_API_KEY`:n. Tämä on nopein tapa hioa promptteja ja tasapainoa.
 ```bash
@@ -62,7 +75,9 @@ Komennot pelin aikana: `/hyvaksy`, `/hylkaa`, `/luovuta`, `/debug`. Terminaali n
 ## Skriptit
 | Komento | Tekee |
 |---|---|
-| `npm run dev` | Kehitystila (tsx watch) |
+| `npm run dev` | Kehitystila (tsx watch, pyörii vain terminaalin ollessa auki) |
+| `npm run bot:start` / `bot:stop` / `bot:restart` | Botti taustalle pm2:lla |
+| `npm run bot:status` / `bot:logs` | Taustabotin tila ja lokit |
 | `npm run play` | Pelitesti terminaalissa |
 | `npm run deploy-commands` | Rekisteröi slash-komennot vain `DISCORD_GUILD_ID`-testipalvelimelle (päivittyy heti) |
 | `npm run deploy-commands -- --global` | Rekisteröi komennot kaikille palvelimille, joilla botti on, ja poistaa testipalvelimen kopiot |

@@ -8,3 +8,4 @@ coverage/
 data/
 *.sqlite-wal
 *.sqlite-shm
+logs/
