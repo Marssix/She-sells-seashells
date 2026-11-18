@@ -1,10 +1,10 @@
 import { Readable } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { personas, type PersonaVoice } from "../src/content/personas.js";
+import { personas, type AzureVoice, type PersonaVoice } from "../src/content/personas.js";
 import { forPiper } from "../src/voice/pronunciation.js";
 import { AzureSpeaker, buildSsml, cleanForSpeech, PiperSpeaker, SpeakerError } from "../src/voice/speaker.js";
 
-const azure = { name: "fi-FI-HarriNeural", pitch: "+5%", rate: "-10%" };
+const azure: AzureVoice = { name: "fi-FI-HarriNeural", pitch: "+5%", rate: "-10%" };
 const voice: PersonaVoice = { azure, piper: { lengthScale: 0.9, pitch: 1.1 } };
 
 describe("cleanForSpeech", () => {
