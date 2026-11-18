@@ -20,6 +20,8 @@ Ketju arkistoituu minuutti pelin päättymisen jälkeen.
 
 **Äänitila:** liity äänikanavalle ja soita ostajalle komennolla `/kauppa soita [ostaja]`. Botti liittyy samalle kanavalle, lukee ostajan repliikit ääneen ja kuuntelee **vain myyjää**: puhu myyntipuheesi, ja se tunnistetaan tekstiksi ketjuun (paikallinen Whisper, ääntä ei tallenneta). Puheenvuoro päättyy noin 1,2 sekunnin hiljaisuuteen. Odota, että ostaja on puhunut loppuun, ennen kuin vastaat: ostajan puheen aikana alkava puhe ohitetaan. Kirjoittaminen ketjuun toimii myös. Botti voi olla yhdellä äänikanavalla per palvelin, joten palvelimella voi olla kerrallaan yksi äänipeli. Tekstipelejä voi olla rajattomasti.
 
+**Päiväraja:** jokainen pelaaja voi aloittaa oletuksena 20 kauppaa vuorokaudessa kaikilla palvelimilla yhteensä. Raja nollautuu keskiyöllä Suomen aikaa ja suojaa botin ylläpitäjää tekoälyn käyttökuluilta. Raja säädetään `.env`-tiedostossa asetuksella `DAILY_GAME_LIMIT` (0 = ei rajaa), ja omat testitunnukset voi vapauttaa asetuksella `LIMIT_EXEMPT_USER_IDS`. Jos pelin aloitus epäonnistuu botin virheen takia, peliä ei lasketa.
+
 Muut komennot:
 - `/kauppa ostajat`: kaikki ostajat vihjeineen.
 - `/kauppa stats [pelaaja]`: myyntitilastot tällä palvelimella (kaupat, myynti yhteensä, pisteet, paras kauppa, ostajakohtaiset tulokset, titteli).

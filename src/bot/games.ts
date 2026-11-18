@@ -10,7 +10,7 @@ import {
 import { BuyerUnavailableError } from "../ai/buyer.js";
 import { getPersona, personas } from "../content/personas.js";
 import { products } from "../content/products.js";
-import { toRoundRecord, type StatsRepository } from "../db/stats.js";
+import { helsinkiDay, toRoundRecord, type StatsRepository } from "../db/stats.js";
 import { GameSession, SessionBusyError, type BuyerFactory } from "../game/session.js";
 import type { GameEvent } from "../game/types.js";
 import type { Speaker } from "../voice/speaker.js";
@@ -42,6 +42,17 @@ export const GAME_THREAD_PREFIX = "🛒 ";
 export const NO_ACTIVE_GAME_MESSAGE =
   "Tässä ketjussa ei ole enää käynnissä olevaa kauppaa: se on päättynyt tai katkesi botin uudelleenkäynnistyksen takia. Aloita uusi komennolla `/kauppa aloita`.";
 
+export interface DailyLimits {
+  /** Pelejä per käyttäjä per vuorokausi, 0 = ei rajaa. */
+  dailyGames: number;
+  /** Käyttäjät, joita raja ei koske (esim. botin ylläpitäjä testatessaan). */
+  exemptUserIds: Set<string>;
+}
+
+export function dailyLimitReachedMessage(limit: number): string {
+  return `Olet pelannut tänään jo ${limit} kauppaa, joka on päivän enimmäismäärä. Raja nollautuu keskiyöllä (Suomen aikaa). Tilastot näet komennolla \`/kauppa stats\`.`;
+}
+
 /** Onko kanava botin luoma peliketju, jolle ei ole muistissa käynnissä olevaa peliä. */
 export function isGameThread(channel: { isThread(): boolean; ownerId?: string | null; name?: string | null }, botUserId: string): boolean {
   return channel.isThread() && channel.ownerId === botUserId && (channel.name ?? "").startsWith(GAME_THREAD_PREFIX);
@@ -63,7 +74,14 @@ export class GameManager {
     private readonly speaker: Speaker | null = null,
     /** Vaihe 2b: jos asetettu, botti kuuntelee äänipelissä myyjän puhetta. */
     private readonly transcriber: Transcriber | null = null,
+    /** Päiväraja: pelejä per käyttäjä per vuorokausi (Suomen aikaa), 0 = ei rajaa. */
+    private readonly limits: DailyLimits = { dailyGames: 0, exemptUserIds: new Set() },
   ) {}
+
+  /** Lasketaanko tämän käyttäjän pelit päivärajaan. */
+  private countsTowardLimit(userId: string): boolean {
+    return !!this.stats && this.limits.dailyGames > 0 && !this.limits.exemptUserIds.has(userId);
+  }
 
   async start(interaction: ChatInputCommandInteraction, personaId: string | null, withVoice = false): Promise<void> {
     const existing = this.threadByUser.get(interaction.user.id);
@@ -74,6 +92,14 @@ export class GameManager {
     const channel = interaction.channel;
     if (!channel || channel.type !== ChannelType.GuildText) {
       await interaction.reply({ content: "Aloita kauppa tavallisella tekstikanavalla (ei ketjussa tai yksityisviestissä).", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Päiväraja: suojaa botin ylläpitäjää tekoälyn käyttökuluilta.
+    const day = helsinkiDay();
+    const counted = this.countsTowardLimit(interaction.user.id);
+    if (counted && this.stats!.gamesStarted(interaction.user.id, day) >= this.limits.dailyGames) {
+      await interaction.reply({ content: dailyLimitReachedMessage(this.limits.dailyGames), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -102,6 +128,7 @@ export class GameManager {
     const sellerName = interaction.member && "displayName" in interaction.member ? interaction.member.displayName : interaction.user.username;
 
     let voice: VoiceLine | null = null;
+    const gamesToday = counted ? this.stats!.addGameStart(interaction.user.id, day) : null;
     try {
       const response = await interaction.reply({
         content: `🛒 **${sellerName}** yrittää myydä tuotteen *${product.name}* ostajalle ${persona.emoji} **${persona.name}**. Seuraa ketjussa!`,
@@ -141,6 +168,9 @@ export class GameManager {
           ? `-# <@${interaction.user.id}>, puhu ostajalle äänikanavalla (tai kirjoita tähän ketjuun). Odota, että ostaja on puhunut loppuun, ennen kuin vastaat.`
           : `-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`,
       );
+      if (gamesToday !== null) {
+        await thread.send(`-# Tämän päivän kaupat: ${gamesToday}/${this.limits.dailyGames}. Raja nollautuu keskiyöllä (Suomen aikaa).`);
+      }
 
       if (voice && listening) {
         const threadId = thread.id;
@@ -160,8 +190,10 @@ export class GameManager {
       });
       this.threadByUser.set(interaction.user.id, thread.id);
     } catch (err) {
-      // Aloitus epäonnistui kesken: vapautetaan äänikanava, ettei palvelin jää lukkoon.
+      // Aloitus epäonnistui kesken: vapautetaan äänikanava, ettei palvelin jää lukkoon,
+      // eikä botin virhe kuluta pelaajan päivärajaa.
       if (withVoice) this.voiceGuilds.delete(channel.guildId);
+      if (gamesToday !== null) this.stats!.removeGameStart(interaction.user.id, day);
       await (voice as VoiceLine | null)?.close();
       throw err;
     }

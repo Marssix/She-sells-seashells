@@ -63,7 +63,14 @@ async function createTranscriber(): Promise<Transcriber | null> {
 }
 const transcriber = await createTranscriber();
 
-const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats, speaker, transcriber);
+const limits = { dailyGames: config.DAILY_GAME_LIMIT, exemptUserIds: config.LIMIT_EXEMPT_USER_IDS };
+console.log(
+  limits.dailyGames > 0
+    ? `🎟️  Päiväraja: ${limits.dailyGames} peliä per käyttäjä (${limits.exemptUserIds.size} vapautettua käyttäjää)`
+    : "🎟️  Päiväraja pois päältä (DAILY_GAME_LIMIT=0)",
+);
+
+const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats, speaker, transcriber, limits);
 const client = createClient(games, stats);
 
 const shutdown = async (signal: string) => {

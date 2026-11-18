@@ -61,7 +61,21 @@ CREATE TABLE IF NOT EXISTS rounds (
   ended_at        TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rounds_user_guild ON rounds (guild_id, user_id);
+
+-- Päiväraja: montako peliä käyttäjä on aloittanut kuluvana päivänä (kaikilla palvelimilla yhteensä).
+-- Vain kuluvan päivän rivit säilytetään; vanhemmat poistetaan aina uutta peliä kirjattaessa.
+CREATE TABLE IF NOT EXISTS daily_usage (
+  user_id  TEXT    NOT NULL,
+  day      TEXT    NOT NULL,
+  games    INTEGER NOT NULL,
+  PRIMARY KEY (user_id, day)
+);
 `;
+
+/** Päivämäärä Suomen ajassa (YYYY-MM-DD). Päiväraja nollautuu keskiyöllä Suomen aikaa. */
+export function helsinkiDay(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Helsinki" }).format(date);
+}
 
 /** Muuntaa päättyneen pelin tallennettavaksi riviksi. */
 export function toRoundRecord(state: GameState, guildId: string, endedAt = new Date()): RoundRecord {
@@ -89,6 +103,28 @@ export class StatsRepository {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new DatabaseSync(path);
     this.db.exec(SCHEMA);
+    // Päivärajan laskurit säilytetään vain kuluvalta päivältä.
+    this.db.prepare(`DELETE FROM daily_usage WHERE day <> ?`).run(helsinkiDay());
+  }
+
+  /** Montako peliä käyttäjä on aloittanut annettuna päivänä. */
+  gamesStarted(userId: string, day: string): number {
+    const row = this.db.prepare(`SELECT games FROM daily_usage WHERE user_id = ? AND day = ?`).get(userId, day) as { games: number } | undefined;
+    return Number(row?.games ?? 0);
+  }
+
+  /** Kirjaa aloitetun pelin ja poistaa edellisten päivien laskurit. Palauttaa päivän uuden määrän. */
+  addGameStart(userId: string, day: string): number {
+    this.db.prepare(`DELETE FROM daily_usage WHERE day <> ?`).run(day);
+    this.db
+      .prepare(`INSERT INTO daily_usage (user_id, day, games) VALUES (?, ?, 1) ON CONFLICT(user_id, day) DO UPDATE SET games = games + 1`)
+      .run(userId, day);
+    return this.gamesStarted(userId, day);
+  }
+
+  /** Perutaan kirjaus, jos pelin aloitus epäonnistui kesken (ei rangaista botin virheestä). */
+  removeGameStart(userId: string, day: string): void {
+    this.db.prepare(`UPDATE daily_usage SET games = MAX(0, games - 1) WHERE user_id = ? AND day = ?`).run(userId, day);
   }
 
   recordRound(r: RoundRecord): void {

@@ -13,6 +13,19 @@ const EnvSchema = z.object({
 
   DATABASE_PATH: optional.transform((v) => v ?? "data/kauppa.sqlite"),
 
+  /** Pelejä per käyttäjä per vuorokausi (Suomen aikaa). 0 = ei rajaa. Suojaa tekoälyn käyttökuluilta. */
+  DAILY_GAME_LIMIT: optional.transform((v, ctx) => {
+    if (v === undefined) return 20;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0) {
+      ctx.addIssue({ code: "custom", message: "DAILY_GAME_LIMIT pitää olla kokonaisluku ≥ 0" });
+      return z.NEVER;
+    }
+    return n;
+  }),
+  /** Pilkuilla erotetut Discord-käyttäjätunnukset, joita päiväraja ei koske (esim. ylläpitäjä). */
+  LIMIT_EXEMPT_USER_IDS: optional.transform((v) => new Set((v ?? "").split(",").map((s) => s.trim()).filter(Boolean))),
+
   ANTHROPIC_API_KEY: optional,
 
   /** whisper = paikallinen (speech/server.py), off = botti ei kuuntele. deepgram/azure eivät ole vielä toteutettuja. */
