@@ -1,23 +1,27 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder, type SlashCommandStringOption } from "discord.js";
 import type { GameManager } from "../bot/games.js";
 import { personaListEmbed, statsEmbed } from "../bot/ui.js";
 import { personas } from "../content/personas.js";
 import type { StatsRepository } from "../db/stats.js";
 import type { Command } from "./types.js";
 
+const buyerOption = (o: SlashCommandStringOption) =>
+  o
+    .setName("ostaja")
+    .setDescription("Valitse ostaja (oletus: satunnainen)")
+    .addChoices(...personas.map((p) => ({ name: `${p.emoji} ${p.name} (${"★".repeat(p.difficulty)})`, value: p.id })));
+
 export const kauppaData = new SlashCommandBuilder()
   .setName("kauppa")
   .setDescription("Myy mitä tahansa tekoälyostajalle.")
   .addSubcommand((sub) =>
+    sub.setName("aloita").setDescription("Aloita uusi kauppa tekstinä. Saat satunnaisen tuotteen.").addStringOption(buyerOption),
+  )
+  .addSubcommand((sub) =>
     sub
-      .setName("aloita")
-      .setDescription("Aloita uusi kauppa. Saat satunnaisen tuotteen.")
-      .addStringOption((o) =>
-        o
-          .setName("ostaja")
-          .setDescription("Valitse ostaja (oletus: satunnainen)")
-          .addChoices(...personas.map((p) => ({ name: `${p.emoji} ${p.name} (${"★".repeat(p.difficulty)})`, value: p.id }))),
-      ),
+      .setName("soita")
+      .setDescription("Soita ostajalle: ostaja puhuu äänikanavalla, jolla olet (liity ensin äänikanavalle).")
+      .addStringOption(buyerOption),
   )
   .addSubcommand((sub) => sub.setName("ostajat").setDescription("Näytä kaikki ostajat ja vihjeet heidän heikkouksistaan."))
   .addSubcommand((sub) =>
@@ -39,8 +43,8 @@ export function createKauppaCommand(games: GameManager, stats: StatsRepository |
     async execute(interaction) {
       const sub = interaction.options.getSubcommand();
 
-      if (sub === "aloita") {
-        await games.start(interaction, interaction.options.getString("ostaja"));
+      if (sub === "aloita" || sub === "soita") {
+        await games.start(interaction, interaction.options.getString("ostaja"), sub === "soita");
         return;
       }
       if (sub === "ostajat") {

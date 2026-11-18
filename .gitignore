@@ -9,3 +9,6 @@ data/
 *.sqlite-wal
 *.sqlite-shm
 logs/
+speech/.venv/
+speech/voices/
+__pycache__/

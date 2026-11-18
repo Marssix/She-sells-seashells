@@ -28,8 +28,37 @@ export interface Persona {
   patienceTurns: number;
   /** Ostajan ensimmäinen repliikki, kun myyjä saapuu (staattinen = ei viivettä eikä API-kutsua). */
   greeting: string;
-  /** TTS-ääni vaihetta 2 varten. */
+  /** Äänen sanallinen kuvaus (dokumentaatioksi ja uusien äänipalveluiden valintaan). */
   voiceHint: string;
+  /** Puhesynteesin ääni äänitilassa, erikseen kullekin puhepalvelulle. */
+  voice: PersonaVoice;
+}
+
+export interface PersonaVoice {
+  azure: AzureVoice;
+  piper: PiperVoice;
+}
+
+/**
+ * Azure Speechin suomenkielinen neuroääni ja sen säädöt. Suomeksi on vain kolme ääntä
+ * (fi-FI-SelmaNeural, fi-FI-NooraNeural, fi-FI-HarriNeural), joten ostajat erotetaan sävelkorkeudella ja tempolla.
+ */
+export interface AzureVoice {
+  name: string;
+  /** SSML-prosodian sävelkorkeus, esim. "-8%" tai "+12%". */
+  pitch: string;
+  /** SSML-prosodian puhenopeus, esim. "-10%" tai "+15%". */
+  rate: string;
+}
+
+/**
+ * Paikallinen Piper (yksi suomenkielinen ääni, fi_FI-harri). Ostajat erotetaan tempolla ja sävelkorkeudella.
+ */
+export interface PiperVoice {
+  /** Puheen pituuskerroin: > 1 = hitaampi, < 1 = nopeampi. */
+  lengthScale: number;
+  /** Sävelkorkeuskerroin: > 1 = korkeampi, < 1 = matalampi. */
+  pitch: number;
 }
 
 export const personas: Persona[] = [
@@ -55,6 +84,10 @@ export const personas: Persona[] = [
     patienceTurns: 10,
     greeting: "Voi hyvänen aika, kukas sieltä tulee? Mirri, mene pois jaloista. No, mitäs teillä olisi?",
     voiceHint: "vanha nainen, lämmin, hidas",
+    voice: {
+      azure: { name: "fi-FI-SelmaNeural", pitch: "-6%", rate: "-12%" },
+      piper: { lengthScale: 1.15, pitch: 1.25 },
+    },
   },
   {
     id: "jarmo",
@@ -77,6 +110,10 @@ export const personas: Persona[] = [
     patienceTurns: 10,
     greeting: "Minulla on kymmenen minuuttia ennen seuraavaa palaveria. Asiaan, olkaa hyvä.",
     voiceHint: "keski-ikäinen mies, kuiva, nopea",
+    voice: {
+      azure: { name: "fi-FI-HarriNeural", pitch: "-4%", rate: "+8%" },
+      piper: { lengthScale: 0.92, pitch: 0.97 },
+    },
   },
   {
     id: "niko",
@@ -99,6 +136,10 @@ export const personas: Persona[] = [
     patienceTurns: 10,
     greeting: "Yo bro! Mä oon just mun podcastin jaksojen välissä, mut kerro, mikä on se next big thing?",
     voiceHint: "nuori mies, energinen, nopea",
+    voice: {
+      azure: { name: "fi-FI-HarriNeural", pitch: "+6%", rate: "+18%" },
+      piper: { lengthScale: 0.85, pitch: 1.06 },
+    },
   },
   {
     id: "veeti",
@@ -121,6 +162,10 @@ export const personas: Persona[] = [
     patienceTurns: 10,
     greeting: "ok. mitä.",
     voiceHint: "teinipoika, monotoninen",
+    voice: {
+      azure: { name: "fi-FI-HarriNeural", pitch: "+14%", rate: "-4%" },
+      piper: { lengthScale: 1.0, pitch: 1.15 },
+    },
   },
   {
     id: "raimo",
@@ -143,6 +188,10 @@ export const personas: Persona[] = [
     patienceTurns: 10,
     greeting: "No kuule kaveri, mitäs sulla siellä takaluukussa on? Mä tunnen kaikki tempput, sanon heti.",
     voiceHint: "vanhempi mies, karhea, itsevarma",
+    voice: {
+      azure: { name: "fi-FI-HarriNeural", pitch: "-12%", rate: "-6%" },
+      piper: { lengthScale: 1.05, pitch: 0.88 },
+    },
   },
 ];
 

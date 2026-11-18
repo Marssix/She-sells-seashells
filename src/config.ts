@@ -15,9 +15,12 @@ const EnvSchema = z.object({
 
   ANTHROPIC_API_KEY: optional,
 
-  STT_PROVIDER: z.enum(["deepgram", "azure"]).default("deepgram"),
+  STT_PROVIDER: z.enum(["whisper", "deepgram", "azure"]).default("whisper"),
   DEEPGRAM_API_KEY: optional,
-  TTS_PROVIDER: z.enum(["elevenlabs", "azure"]).default("elevenlabs"),
+  /** piper = paikallinen (speech/server.py), azure = Azure Speech. elevenlabs ei ole vielä toteutettu. */
+  TTS_PROVIDER: z.enum(["piper", "azure", "elevenlabs"]).default("piper"),
+  /** Paikallisen puhepalvelun osoite. */
+  SPEECH_URL: z.string().url().default("http://127.0.0.1:5005"),
   ELEVENLABS_API_KEY: optional,
   AZURE_SPEECH_KEY: optional,
   AZURE_SPEECH_REGION: z.string().default("northeurope"),

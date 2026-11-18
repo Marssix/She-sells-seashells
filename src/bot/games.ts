@@ -1,6 +1,7 @@
 import {
   ChannelType,
   MessageFlags,
+  PermissionFlagsBits,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Message,
@@ -12,6 +13,8 @@ import { products } from "../content/products.js";
 import { toRoundRecord, type StatsRepository } from "../db/stats.js";
 import { GameSession, type BuyerFactory } from "../game/session.js";
 import type { GameEvent } from "../game/types.js";
+import type { Speaker } from "../voice/speaker.js";
+import { VoiceLine } from "../voice/voice-line.js";
 import { BUTTON, buyerLine, eventNotes, resultEmbed, statusButtons, statusEmbed } from "./ui.js";
 
 /** Kauan ostaja odottaa myyjän seuraavaa viestiä. */
@@ -26,6 +29,8 @@ interface ActiveGame {
   statusMessage: Message;
   sellerName: string;
   idleTimer: NodeJS.Timeout;
+  /** Äänitilassa: ostajan ääniyhteys. */
+  voice: VoiceLine | null;
 }
 
 const pick = <T>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]!;
@@ -48,12 +53,16 @@ export class GameManager {
   /** Ketjut, joihin on jo kerrottu, ettei peliä ole käynnissä (ei toisteta joka viestiin). */
   private readonly notifiedThreads = new Set<string>();
 
+  /** Palvelimet, joilla on käynnissä äänipeli. Botti voi olla vain yhdellä äänikanavalla per palvelin. */
+  private readonly voiceGuilds = new Set<string>();
+
   constructor(
     private readonly buyerFactory: BuyerFactory,
     private readonly stats: StatsRepository | null = null,
+    private readonly speaker: Speaker | null = null,
   ) {}
 
-  async start(interaction: ChatInputCommandInteraction, personaId: string | null): Promise<void> {
+  async start(interaction: ChatInputCommandInteraction, personaId: string | null, withVoice = false): Promise<void> {
     const existing = this.threadByUser.get(interaction.user.id);
     if (existing) {
       await interaction.reply({ content: `Sinulla on jo kauppa käynnissä: <#${existing}>`, flags: MessageFlags.Ephemeral });
@@ -65,36 +74,78 @@ export class GameManager {
       return;
     }
 
+    // Äänitila: tarkistetaan ennen kuin mitään luodaan, jotta virheestä kerrotaan vain pelaajalle.
+    const voiceChannel = withVoice ? channel.guild.members.cache.get(interaction.user.id)?.voice.channel ?? null : null;
+    if (withVoice) {
+      const problem = !this.speaker
+        ? "Äänitila ei ole käytössä tällä botilla (puhesynteesiä ei ole määritetty). Pelaa tekstinä: `/kauppa aloita`."
+        : !voiceChannel
+          ? "Liity ensin äänikanavalle, niin ostaja puhuu sinulle siellä."
+          : this.voiceGuilds.has(channel.guildId)
+            ? "Tällä palvelimella on jo äänipeli käynnissä (botti voi olla vain yhdellä äänikanavalla kerrallaan). Odota tai pelaa tekstinä: `/kauppa aloita`."
+            : !voiceChannel.joinable ||
+                !voiceChannel.permissionsFor(channel.guild.members.me!)?.has([PermissionFlagsBits.Connect, PermissionFlagsBits.Speak])
+              ? `Botilla ei ole oikeutta liittyä tai puhua kanavalla ${voiceChannel.name}.`
+              : null;
+      if (problem) {
+        await interaction.reply({ content: problem, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      this.voiceGuilds.add(channel.guildId);
+    }
+
     const persona = (personaId && getPersona(personaId)) || pick(personas);
     const product = pick(products);
     const sellerName = interaction.member && "displayName" in interaction.member ? interaction.member.displayName : interaction.user.username;
 
-    const response = await interaction.reply({
-      content: `🛒 **${sellerName}** yrittää myydä tuotteen *${product.name}* ostajalle ${persona.emoji} **${persona.name}**. Seuraa ketjussa!`,
-      withResponse: true,
-    });
-    const announce = response.resource?.message;
-    if (!announce) throw new Error("Aloitusviestiä ei saatu.");
+    let voice: VoiceLine | null = null;
+    try {
+      const response = await interaction.reply({
+        content: `🛒 **${sellerName}** yrittää myydä tuotteen *${product.name}* ostajalle ${persona.emoji} **${persona.name}**. Seuraa ketjussa!`,
+        withResponse: true,
+      });
+      const announce = response.resource?.message;
+      if (!announce) throw new Error("Aloitusviestiä ei saatu.");
 
-    const thread = await announce.startThread({
-      name: `${GAME_THREAD_PREFIX}${sellerName} → ${persona.name}`.slice(0, 100),
-      autoArchiveDuration: 60,
-    });
+      const thread = await announce.startThread({
+        name: `${GAME_THREAD_PREFIX}${sellerName} → ${persona.name}`.slice(0, 100),
+        autoArchiveDuration: 60,
+      });
 
-    const session = new GameSession(persona, product, interaction.user.id, this.buyerFactory(persona, product));
-    const statusMessage = await thread.send({ embeds: [statusEmbed(session.state, sellerName)], components: statusButtons(session.state) });
-    await thread.send(buyerLine(persona, persona.greeting));
-    await thread.send(`-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`);
+      const session = new GameSession(persona, product, interaction.user.id, this.buyerFactory(persona, product));
+      const statusMessage = await thread.send({ embeds: [statusEmbed(session.state, sellerName)], components: statusButtons(session.state) });
 
-    this.games.set(thread.id, {
-      session,
-      thread,
-      guildId: channel.guildId,
-      statusMessage,
-      sellerName,
-      idleTimer: this.armIdleTimer(thread.id),
-    });
-    this.threadByUser.set(interaction.user.id, thread.id);
+      if (voiceChannel && this.speaker) {
+        try {
+          voice = await VoiceLine.open(voiceChannel, this.speaker, persona.voice);
+          await thread.send(`🔊 ${persona.emoji} ${persona.name} puhuu kanavalla <#${voiceChannel.id}>. Botti ei kuuntele: myyntipuhe kirjoitetaan tähän ketjuun.`);
+        } catch (err) {
+          console.error("Äänikanavalle liittyminen epäonnistui:", err);
+          this.voiceGuilds.delete(channel.guildId);
+          await thread.send("⚠️ Äänikanavalle liittyminen epäonnistui, joten peli jatkuu pelkkänä tekstinä.");
+        }
+      }
+
+      await thread.send(buyerLine(persona, persona.greeting));
+      void voice?.say(persona.greeting);
+      await thread.send(`-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`);
+
+      this.games.set(thread.id, {
+        session,
+        thread,
+        guildId: channel.guildId,
+        statusMessage,
+        sellerName,
+        idleTimer: this.armIdleTimer(thread.id),
+        voice,
+      });
+      this.threadByUser.set(interaction.user.id, thread.id);
+    } catch (err) {
+      // Aloitus epäonnistui kesken: vapautetaan äänikanava, ettei palvelin jää lukkoon.
+      if (withVoice) this.voiceGuilds.delete(channel.guildId);
+      await (voice as VoiceLine | null)?.close();
+      throw err;
+    }
   }
 
   async onMessage(message: Message): Promise<void> {
@@ -125,6 +176,7 @@ export class GameManager {
       const { decision, events, state } = await session.handleSellerMessage(message.content);
       clearInterval(typing);
       await thread.send(buyerLine(state.persona, decision.reply, decision.emotion));
+      void game.voice?.say(decision.reply);
       const notes = eventNotes(state, events);
       if (notes.length) await thread.send(notes.join("\n"));
       await this.afterChange(game, events);
@@ -171,6 +223,11 @@ export class GameManager {
       this.games.delete(thread.id);
       this.threadByUser.delete(session.state.sellerId);
       this.saveStats(game);
+      if (game.voice) {
+        // Annetaan viimeisen repliikin soida loppuun, sitten poistutaan kanavalta ja vapautetaan palvelin.
+        const voice = game.voice;
+        void voice.close().finally(() => this.voiceGuilds.delete(game.guildId));
+      }
       await thread.send({
         content: "-# Ketju arkistoidaan minuutin kuluttua. Katso omat tilastosi: `/kauppa stats`",
         embeds: [resultEmbed(session.state, sellerName)],

@@ -22,7 +22,9 @@ describe("konfiguraatio", () => {
   it("hyväksyy minimiasetukset ja käyttää oletuksia", () => {
     const cfg = loadConfig({ DISCORD_TOKEN: "x", DISCORD_CLIENT_ID: "1", DISCORD_GUILD_ID: "" });
     expect(cfg.DISCORD_GUILD_ID).toBeUndefined();
-    expect(cfg.STT_PROVIDER).toBe("deepgram");
+    expect(cfg.STT_PROVIDER).toBe("whisper");
+    expect(cfg.TTS_PROVIDER).toBe("piper");
+    expect(cfg.SPEECH_URL).toBe("http://127.0.0.1:5005");
   });
 
   it("tekoälyasetuksilla on oletukset eikä niihin tarvita Discord-tunnuksia", () => {

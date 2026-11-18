@@ -2,7 +2,7 @@
 
 Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 
-**Tila:** vaihe 1 (pelimoottori + tekstiversio). Äänitila tulee vaiheessa 2.
+**Tila:** vaihe 2a. Peli toimii tekstinä, ja äänitilassa ostaja puhuu äänikanavalla. Pelaajan puheen tunnistus (vaihe 2b) on tulossa.
 
 ## Miten peliä pelataan
 1. `/kauppa aloita [ostaja]`: botti avaa ketjun, jossa saat satunnaisen tuotteen ja ostajan.
@@ -17,6 +17,8 @@ Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 **Pisteet** = 100 × log10(1 + hinta / todellinen arvo) × absurdiuskerroin (1–1,5) × heikkousbonus + 5 per säästetty vuoro.
 
 Ketju arkistoituu minuutti pelin päättymisen jälkeen.
+
+**Äänitila:** liity äänikanavalle ja soita ostajalle komennolla `/kauppa soita [ostaja]`. Botti liittyy samalle kanavalle ja lukee ostajan repliikit ääneen. Oletuksena ääni tuotetaan paikallisesti Piperillä (ilmainen, ei lähetä tekstiä minnekään), ja vaihtoehtona on Azure Speech. Myyntipuhe kirjoitetaan edelleen ketjuun, eikä botti kuuntele kanavaa. Botti voi olla yhdellä äänikanavalla per palvelin, joten palvelimella voi olla kerrallaan yksi äänipeli. Tekstipelejä voi olla rajattomasti.
 
 Muut komennot:
 - `/kauppa ostajat`: kaikki ostajat vihjeineen.
@@ -117,5 +119,23 @@ Discord Developer Portalissa (General Information) käytettävät linkit:
 - Privacy Policy URL: `https://github.com/Marssix/She-sells-seashells/blob/main/docs/PRIVACY.md`
 - Terms of Service URL: `https://github.com/Marssix/She-sells-seashells/blob/main/docs/TERMS.md`
 
-## API-avaimet myöhempiin vaiheisiin
-- **Vaihe 2:** Deepgram (STT) ja ElevenLabs (TTS), tai Azure Speech molempiin
+## Äänitilan käyttöönotto
+
+### Paikallinen Piper (oletus)
+Ilmainen, toimii prosessorilla, eikä ostajan tekstiä lähetetä minnekään. Ääni on robottimaisempi kuin Azuressa, ja suomeksi on yksi ääni (Harri), jota muokataan ostajittain tempolla ja sävelkorkeudella.
+1. Asenna puhepalvelu (Python 3.10+ ja FFmpeg vaaditaan):
+   ```bash
+   npm run speech:setup
+   ```
+   Komento luo kansioon `speech/.venv` oman Python-ympäristön ja lataa äänen `fi_FI-harri-medium` (63 MB, äänen data CC0) kansioon `speech/voices`.
+2. `npm run bot:start` käynnistää pm2:lla sekä botin että puhepalvelun (`she-sells-speech`). Botin lokissa pitää näkyä `🔊 Äänitila käytössä (paikallinen Piper…)`.
+
+Piper-ohjelman lisenssi on GPL-3.0. Puhepalvelu ajetaan erillisenä prosessina eikä sitä jaeta botin mukana. Englanninkielisten slangisanojen ääntämiskorjaukset ovat tiedostossa `src/voice/pronunciation.ts`.
+
+### Azure Speech (vaihtoehto)
+1. Luo Azure-tili osoitteessa <https://portal.azure.com> ja resurssi **Speech** (alue **North Europe**, hintataso **Free F0**).
+2. Lisää `.env`-tiedostoon `TTS_PROVIDER=azure` ja **KEY 1** riville `AZURE_SPEECH_KEY`.
+3. `npm run bot:restart`. Lokissa pitää näkyä `🔊 Äänitila käytössä (Azure…)`.
+
+Ostajien äänet ja niiden säädöt kummallekin palvelulle ovat tiedostossa `src/content/personas.ts` (kenttä `voice`).
+

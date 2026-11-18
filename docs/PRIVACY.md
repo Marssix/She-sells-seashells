@@ -1,6 +1,6 @@
 # Privacy Policy – She Sells Seashells
 
-**Effective: November 13, 2026** (first version: November 12, 2026)
+**Effective: November 18, 2026** (first version: November 12, 2026)
 
 This Privacy Policy explains what information the Discord bot **She Sells Seashells** ("the bot", "we", "us") processes, why, and who it is shared with. The bot is a hobby project, and its source code is publicly available at <https://github.com/Marssix/She-sells-seashells>.
 
@@ -24,8 +24,10 @@ Game statistics **do not** include the content of your messages.
 
 We **do not collect** email addresses, payment details, location data or any information other than what is listed above.
 
-### Voice mode (not yet available)
-A planned voice mode would listen to the player's speech in a voice channel and convert it to text. We will update this policy and explain how voice data is handled before the feature is released. Our principle is that audio will not be recorded or stored.
+### Voice mode
+When you start a game with `/kauppa soita`, the bot joins your current voice channel and reads the buyer's replies aloud. In this version the bot **does not listen**: it joins the channel deafened, receives no audio from anyone in the channel, and you still type your sales pitch in the game thread. Everyone in the voice channel can hear the buyer. The bot leaves the channel when the game ends.
+
+A later version may also listen to the seller's speech and convert it to text. We will update this policy and explain how voice data is handled before that is released. Our principle is that audio will not be recorded or stored.
 
 ## 3. Legal basis
 Processing is based on **legitimate interest** (EU General Data Protection Regulation, Art. 6(1)(f)). The information is needed to provide the game that you start yourself, and we process only what is necessary for the game to work.
@@ -33,12 +35,13 @@ Processing is based on **legitimate interest** (EU General Data Protection Regul
 ## 4. Who we share information with
 - **Anthropic (Claude API):** the AI buyer's replies are generated with Anthropic's Claude model. We send Anthropic **the text of your sales pitch** and the game state (for example, the buyer character, the product and the meter values). Your Discord IDs and name are **not** sent. By default, Anthropic does not use data sent through its API to train its models. Learn more: <https://www.anthropic.com/legal/privacy>.
 - **Discord:** all game messages pass through Discord, which processes them under its own terms: <https://discord.com/privacy>.
+- **Microsoft (Azure AI Speech), voice mode only, if the operator has enabled it:** by default, the buyer's replies are turned into speech locally on the bot's own server (Piper), and the text is not sent anywhere. If the operator switches to Microsoft's text-to-speech service instead, we send Microsoft **only the text of the buyer's reply** and the voice settings. No audio from you or anyone else, and no Discord IDs or names, are sent. A reply is written by the AI and may repeat words from your sales pitch. Learn more: <https://privacy.microsoft.com/privacystatement>.
 - **Hosting:** the bot runs on the operator's computer or a cloud server, and the hosting provider may technically process the bot's log data.
 
 We do not sell information or use it for advertising.
 
 ## 5. Transfers outside the EU
-Anthropic and Discord also process data in the United States. These transfers rely on the transfer mechanisms approved by the EU that these providers use, such as the EU–US Data Privacy Framework and the European Commission's Standard Contractual Clauses.
+Anthropic and Discord also process data in the United States. If Microsoft's speech service is enabled, it is called in the North Europe (Ireland) region. These transfers rely on the transfer mechanisms approved by the EU that these providers use, such as the EU–US Data Privacy Framework and the European Commission's Standard Contractual Clauses.
 
 ## 6. How long information is kept
 - **Game state and conversation history** are kept only in the bot's memory. They are deleted when the game ends or the bot restarts.

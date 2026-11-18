@@ -3,6 +3,7 @@ import { createClient } from "./bot/client.js";
 import { GameManager } from "./bot/games.js";
 import { createClaudeBuyerFactory } from "./ai/buyer.js";
 import { StatsRepository } from "./db/stats.js";
+import { AzureSpeaker, PiperSpeaker, type Speaker } from "./voice/speaker.js";
 
 const config = loadConfig();
 const aiConfig = loadAiConfig();
@@ -15,7 +16,31 @@ console.log(`🤖 Ostajan malli: ${aiConfig.ANTHROPIC_MODEL} (effort: ${aiConfig
 const stats = new StatsRepository(config.DATABASE_PATH);
 console.log(`💾 Tilastot: ${config.DATABASE_PATH}`);
 
-const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats);
+// Äänitila (vaihe 2a): ostaja puhuu valitulla puhesynteesillä (TTS_PROVIDER).
+async function createSpeaker(): Promise<Speaker | null> {
+  if (config.TTS_PROVIDER === "azure") {
+    if (!config.AZURE_SPEECH_KEY) {
+      console.warn("🔇 Äänitila pois päältä: TTS_PROVIDER=azure mutta AZURE_SPEECH_KEY puuttuu");
+      return null;
+    }
+    console.log(`🔊 Äänitila käytössä (Azure, ${config.AZURE_SPEECH_REGION})`);
+    return new AzureSpeaker(config.AZURE_SPEECH_KEY, config.AZURE_SPEECH_REGION);
+  }
+  if (config.TTS_PROVIDER === "elevenlabs") {
+    console.warn("ElevenLabs-puhesynteesiä ei ole vielä toteutettu: käytetään paikallista Piperiä.");
+  }
+  const piper = new PiperSpeaker(config.SPEECH_URL);
+  const voice = await piper.health();
+  console.log(
+    voice
+      ? `🔊 Äänitila käytössä (paikallinen Piper, ääni ${voice})`
+      : `⚠️  Äänitila: puhepalvelu ${config.SPEECH_URL} ei vastaa vielä. Ostajan puhe toimii, kun palvelu käynnistyy (npm run bot:start).`,
+  );
+  return piper;
+}
+const speaker = await createSpeaker();
+
+const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats, speaker);
 const client = createClient(games, stats);
 
 const shutdown = async (signal: string) => {

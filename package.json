@@ -17,15 +17,20 @@
     "test": "vitest run",
     "play": "tsx src/cli/playtest.ts",
     "bot:start": "npm run build && pm2 start ecosystem.config.cjs",
-    "bot:stop": "pm2 stop she-sells-seashells",
+    "bot:stop": "pm2 stop ecosystem.config.cjs",
     "bot:restart": "npm run build && pm2 restart ecosystem.config.cjs --update-env",
     "bot:logs": "pm2 logs she-sells-seashells --lines 50",
-    "bot:status": "pm2 status"
+    "bot:status": "pm2 status",
+    "voice:spike": "tsx src/cli/voice-spike.ts",
+    "speech:setup": "python speech/setup.py",
+    "speech:logs": "pm2 logs she-sells-speech --lines 50"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@discordjs/voice": "^0.19.2",
     "discord.js": "^14.28.1",
     "dotenv": "^18.0.10",
+    "opusscript": "^0.0.8",
     "zod": "^4.6.7"
   },
   "devDependencies": {
