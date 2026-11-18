@@ -1,2 +1,8 @@
 # Paikallinen puhepalvelu (speech/server.py). Asennus: npm run speech:setup
+# Puhesynteesi (prosessori)
 piper-tts==1.8.0
+# Puheentunnistus (näytönohjain; toimii myös prosessorilla hitaammin)
+faster-whisper==1.2.1
+# CUDA 12 -kirjastot Whisperille (Windows/Linux, NVIDIA). Malli large-v3-turbo ladataan ensimmäisellä käynnistyksellä (~1,6 GB).
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10

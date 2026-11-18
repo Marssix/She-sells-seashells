@@ -2,7 +2,7 @@
 
 Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 
-**Tila:** vaihe 2a. Peli toimii tekstinä, ja äänitilassa ostaja puhuu äänikanavalla. Pelaajan puheen tunnistus (vaihe 2b) on tulossa.
+**Tila:** vaihe 2b. Peli toimii tekstinä, ja äänitilassa (`/kauppa soita`) ostaja puhuu ja myyjä voi puhua myyntipuheensa. Keskeytys ja muut luonnollisuusparannukset (vaihe 2c) ovat tulossa.
 
 ## Miten peliä pelataan
 1. `/kauppa aloita [ostaja]`: botti avaa ketjun, jossa saat satunnaisen tuotteen ja ostajan.
@@ -18,7 +18,7 @@ Discord-peli, jossa myyt mitä tahansa tekoälyostajalle.
 
 Ketju arkistoituu minuutti pelin päättymisen jälkeen.
 
-**Äänitila:** liity äänikanavalle ja soita ostajalle komennolla `/kauppa soita [ostaja]`. Botti liittyy samalle kanavalle ja lukee ostajan repliikit ääneen. Oletuksena ääni tuotetaan paikallisesti Piperillä (ilmainen, ei lähetä tekstiä minnekään), ja vaihtoehtona on Azure Speech. Myyntipuhe kirjoitetaan edelleen ketjuun, eikä botti kuuntele kanavaa. Botti voi olla yhdellä äänikanavalla per palvelin, joten palvelimella voi olla kerrallaan yksi äänipeli. Tekstipelejä voi olla rajattomasti.
+**Äänitila:** liity äänikanavalle ja soita ostajalle komennolla `/kauppa soita [ostaja]`. Botti liittyy samalle kanavalle, lukee ostajan repliikit ääneen ja kuuntelee **vain myyjää**: puhu myyntipuheesi, ja se tunnistetaan tekstiksi ketjuun (paikallinen Whisper, ääntä ei tallenneta). Puheenvuoro päättyy noin 1,2 sekunnin hiljaisuuteen. Odota, että ostaja on puhunut loppuun, ennen kuin vastaat: ostajan puheen aikana alkava puhe ohitetaan. Kirjoittaminen ketjuun toimii myös. Botti voi olla yhdellä äänikanavalla per palvelin, joten palvelimella voi olla kerrallaan yksi äänipeli. Tekstipelejä voi olla rajattomasti.
 
 Muut komennot:
 - `/kauppa ostajat`: kaikki ostajat vihjeineen.
@@ -121,14 +121,16 @@ Discord Developer Portalissa (General Information) käytettävät linkit:
 
 ## Äänitilan käyttöönotto
 
+Puhepalvelu `speech/server.py` hoitaa sekä ostajan äänen (Piper, prosessorilla) että myyjän puheentunnistuksen (Whisper large-v3-turbo, NVIDIA-näytönohjaimella noin 0,25 s per puheenvuoro, ilman näytönohjainta hitaammin prosessorilla). Kumpikaan ei lähetä ääntä eikä tekstiä koneelta. Puheentunnistuksen voi kytkeä pois asetuksella `STT_PROVIDER=off`.
+
 ### Paikallinen Piper (oletus)
 Ilmainen, toimii prosessorilla, eikä ostajan tekstiä lähetetä minnekään. Ääni on robottimaisempi kuin Azuressa, ja suomeksi on yksi ääni (Harri), jota muokataan ostajittain tempolla ja sävelkorkeudella.
 1. Asenna puhepalvelu (Python 3.10+ ja FFmpeg vaaditaan):
    ```bash
    npm run speech:setup
    ```
-   Komento luo kansioon `speech/.venv` oman Python-ympäristön ja lataa äänen `fi_FI-harri-medium` (63 MB, äänen data CC0) kansioon `speech/voices`.
-2. `npm run bot:start` käynnistää pm2:lla sekä botin että puhepalvelun (`she-sells-speech`). Botin lokissa pitää näkyä `🔊 Äänitila käytössä (paikallinen Piper…)`.
+   Komento luo kansioon `speech/.venv` oman Python-ympäristön (Piper, faster-whisper ja CUDA-kirjastot, noin 2 GB) ja lataa äänen `fi_FI-harri-medium` (63 MB, äänen data CC0) kansioon `speech/voices`. Whisper-malli (noin 1,6 GB) ladataan puhepalvelun ensimmäisellä käynnistyksellä.
+2. `npm run bot:start` käynnistää pm2:lla sekä botin että puhepalvelun (`she-sells-speech`). Botin lokissa pitää näkyä `🔊 Äänitila käytössä (paikallinen Piper…)` ja `🎙️ Puheentunnistus käytössä`.
 
 Piper-ohjelman lisenssi on GPL-3.0. Puhepalvelu ajetaan erillisenä prosessina eikä sitä jaeta botin mukana. Englanninkielisten slangisanojen ääntämiskorjaukset ovat tiedostossa `src/voice/pronunciation.ts`.
 

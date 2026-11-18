@@ -15,7 +15,8 @@ const EnvSchema = z.object({
 
   ANTHROPIC_API_KEY: optional,
 
-  STT_PROVIDER: z.enum(["whisper", "deepgram", "azure"]).default("whisper"),
+  /** whisper = paikallinen (speech/server.py), off = botti ei kuuntele. deepgram/azure eivät ole vielä toteutettuja. */
+  STT_PROVIDER: z.enum(["whisper", "off", "deepgram", "azure"]).default("whisper"),
   DEEPGRAM_API_KEY: optional,
   /** piper = paikallinen (speech/server.py), azure = Azure Speech. elevenlabs ei ole vielä toteutettu. */
   TTS_PROVIDER: z.enum(["piper", "azure", "elevenlabs"]).default("piper"),

@@ -4,6 +4,7 @@ import { GameManager } from "./bot/games.js";
 import { createClaudeBuyerFactory } from "./ai/buyer.js";
 import { StatsRepository } from "./db/stats.js";
 import { AzureSpeaker, PiperSpeaker, type Speaker } from "./voice/speaker.js";
+import { LocalTranscriber, type Transcriber } from "./voice/transcriber.js";
 
 const config = loadConfig();
 const aiConfig = loadAiConfig();
@@ -40,7 +41,29 @@ async function createSpeaker(): Promise<Speaker | null> {
 }
 const speaker = await createSpeaker();
 
-const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats, speaker);
+// Puheentunnistus (vaihe 2b): botti kuuntelee äänipelissä myyjää paikallisella Whisperillä.
+async function createTranscriber(): Promise<Transcriber | null> {
+  if (!speaker) return null;
+  if (config.STT_PROVIDER === "off") {
+    console.log("🎙️ Puheentunnistus pois päältä (STT_PROVIDER=off): myyntipuhe kirjoitetaan ketjuun.");
+    return null;
+  }
+  if (config.STT_PROVIDER !== "whisper") {
+    console.warn(`Puheentunnistusta ${config.STT_PROVIDER} ei ole toteutettu: botti ei kuuntele (käytä STT_PROVIDER=whisper).`);
+    return null;
+  }
+  const whisper = new LocalTranscriber(config.SPEECH_URL);
+  const status = await whisper.status();
+  console.log(
+    status === "ready" || status === "loading"
+      ? `🎙️ Puheentunnistus käytössä (paikallinen Whisper, tila: ${status})`
+      : `⚠️  Puheentunnistus: Whisper ei ole käytettävissä (${status ?? "puhepalvelu ei vastaa"}). Botti kuuntelee, kun palvelu on valmis.`,
+  );
+  return whisper;
+}
+const transcriber = await createTranscriber();
+
+const games = new GameManager(createClaudeBuyerFactory(aiConfig), stats, speaker, transcriber);
 const client = createClient(games, stats);
 
 const shutdown = async (signal: string) => {

@@ -11,9 +11,10 @@ import { BuyerUnavailableError } from "../ai/buyer.js";
 import { getPersona, personas } from "../content/personas.js";
 import { products } from "../content/products.js";
 import { toRoundRecord, type StatsRepository } from "../db/stats.js";
-import { GameSession, type BuyerFactory } from "../game/session.js";
+import { GameSession, SessionBusyError, type BuyerFactory } from "../game/session.js";
 import type { GameEvent } from "../game/types.js";
 import type { Speaker } from "../voice/speaker.js";
+import { cleanTranscript, sttPrompt, type Transcriber } from "../voice/transcriber.js";
 import { VoiceLine } from "../voice/voice-line.js";
 import { BUTTON, buyerLine, eventNotes, resultEmbed, statusButtons, statusEmbed } from "./ui.js";
 
@@ -60,6 +61,8 @@ export class GameManager {
     private readonly buyerFactory: BuyerFactory,
     private readonly stats: StatsRepository | null = null,
     private readonly speaker: Speaker | null = null,
+    /** Vaihe 2b: jos asetettu, botti kuuntelee äänipelissä myyjän puhetta. */
+    private readonly transcriber: Transcriber | null = null,
   ) {}
 
   async start(interaction: ChatInputCommandInteraction, personaId: string | null, withVoice = false): Promise<void> {
@@ -115,10 +118,15 @@ export class GameManager {
       const session = new GameSession(persona, product, interaction.user.id, this.buyerFactory(persona, product));
       const statusMessage = await thread.send({ embeds: [statusEmbed(session.state, sellerName)], components: statusButtons(session.state) });
 
+      const listening = !!this.transcriber;
       if (voiceChannel && this.speaker) {
         try {
-          voice = await VoiceLine.open(voiceChannel, this.speaker, persona.voice);
-          await thread.send(`🔊 ${persona.emoji} ${persona.name} puhuu kanavalla <#${voiceChannel.id}>. Botti ei kuuntele: myyntipuhe kirjoitetaan tähän ketjuun.`);
+          voice = await VoiceLine.open(voiceChannel, this.speaker, persona.voice, listening);
+          await thread.send(
+            listening
+              ? `🔊 ${persona.emoji} ${persona.name} puhuu kanavalla <#${voiceChannel.id}>.\n🎙️ Botti kuuntelee kanavalla **vain myyjää** <@${interaction.user.id}>. Puhe muutetaan tekstiksi tähän ketjuun, eikä ääntä tallenneta.`
+              : `🔊 ${persona.emoji} ${persona.name} puhuu kanavalla <#${voiceChannel.id}>. Botti ei kuuntele: myyntipuhe kirjoitetaan tähän ketjuun.`,
+          );
         } catch (err) {
           console.error("Äänikanavalle liittyminen epäonnistui:", err);
           this.voiceGuilds.delete(channel.guildId);
@@ -128,7 +136,18 @@ export class GameManager {
 
       await thread.send(buyerLine(persona, persona.greeting));
       void voice?.say(persona.greeting);
-      await thread.send(`-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`);
+      await thread.send(
+        voice && listening
+          ? `-# <@${interaction.user.id}>, puhu ostajalle äänikanavalla (tai kirjoita tähän ketjuun). Odota, että ostaja on puhunut loppuun, ennen kuin vastaat.`
+          : `-# <@${interaction.user.id}>, kirjoita myyntipuheesi tähän ketjuun. Vain sinun viestisi lasketaan.`,
+      );
+
+      if (voice && listening) {
+        const threadId = thread.id;
+        voice.listen(interaction.user.id, (pcm16k, seconds) => {
+          this.onSpeech(threadId, pcm16k, seconds).catch((err) => console.error("Puheen käsittely epäonnistui:", err));
+        });
+      }
 
       this.games.set(thread.id, {
         session,
@@ -157,23 +176,55 @@ export class GameManager {
     }
     if (message.author.id !== game.session.state.sellerId) return;
 
-    const { session, thread } = game;
-    if (session.state.status === "final_offer") {
+    if (game.session.state.status === "final_offer") {
       await message.reply("Ostajan kärsivällisyys on loppu. Hyväksy tai hylkää viimeinen tarjous napeilla.");
       return;
     }
-    if (session.isBusy) {
+    if (game.session.isBusy) {
       await message.react("⏳").catch(() => {});
       return;
     }
+    await this.playSellerTurn(game, message.content, (text) => message.reply(text).then(() => {}));
+  }
 
+  /**
+   * Vaihe 2b: myyjän puheenvuoro äänikanavalta. Puhe tunnistetaan, näytetään ketjussa
+   * ja käsitellään täsmälleen kuten kirjoitettu myyntipuhe.
+   */
+  private async onSpeech(threadId: string, pcm16k: Buffer, seconds: number): Promise<void> {
+    const game = this.games.get(threadId);
+    if (!game || !this.transcriber) return;
+    const { session, thread } = game;
+    // Puhe ostajan miettiessä tai viimeisen tarjouksen aikana ohitetaan (napit ratkaisevat viimeisen tarjouksen).
+    if (session.state.status !== "active" || session.isBusy) return;
+
+    const started = Date.now();
+    let text: string;
+    try {
+      text = cleanTranscript(await this.transcriber.transcribe(pcm16k, sttPrompt(session.state.persona, session.state.product)));
+    } catch (err) {
+      console.error("Puheentunnistus epäonnistui:", err instanceof Error ? err.message : err);
+      await thread.send("⚠️ Puhetta ei saatu tunnistettua. Sano uudelleen tai kirjoita tähän ketjuun.");
+      return;
+    }
+    console.log(`🎙️ Myyjä puhui ${seconds.toFixed(1)} s, tunnistettu ${Date.now() - started} ms`);
+    if (!text) return; // kohinaa tai hiljaisuutta
+    if (!this.games.has(threadId) || session.state.status !== "active" || session.isBusy) return;
+
+    await thread.send(`🎙️ **${game.sellerName}:** ${text}`);
+    await this.playSellerTurn(game, text, (msg) => thread.send(msg).then(() => {}));
+  }
+
+  /** Yksi myyjän vuoro (kirjoitettu tai puhuttu): ostaja vastaa tekstinä ja äänitilassa ääneen. */
+  private async playSellerTurn(game: ActiveGame, text: string, notify: (msg: string) => Promise<void>): Promise<void> {
+    const { session, thread } = game;
     clearTimeout(game.idleTimer);
     game.idleTimer = this.armIdleTimer(thread.id);
 
     await thread.sendTyping().catch(() => {});
     const typing = setInterval(() => void thread.sendTyping().catch(() => {}), 8000);
     try {
-      const { decision, events, state } = await session.handleSellerMessage(message.content);
+      const { decision, events, state } = await session.handleSellerMessage(text);
       clearInterval(typing);
       await thread.send(buyerLine(state.persona, decision.reply, decision.emotion));
       void game.voice?.say(decision.reply);
@@ -184,9 +235,10 @@ export class GameManager {
       clearInterval(typing);
       if (err instanceof BuyerUnavailableError) {
         console.error("Ostaja ei vastannut:", err.detail);
-        await message.reply(`⚠️ ${err.message}\n-# Viestisi ei kuluttanut vuoroa.`);
+        await notify(`⚠️ ${err.message}\n-# Viestisi ei kuluttanut vuoroa.`);
         return;
       }
+      if (err instanceof SessionBusyError) return; // kirjoitettu ja puhuttu vuoro yhtä aikaa: myöhempi ohitetaan
       throw err;
     }
   }
