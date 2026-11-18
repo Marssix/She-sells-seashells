@@ -2,7 +2,9 @@
 // Käyttö: npm run bot:start | bot:stop | bot:restart | bot:logs | bot:status | speech:logs
 const path = require("path");
 
-const python = path.join(__dirname, "speech", ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
+// Windowsissa pythonw.exe: ei konsoli-ikkunaa. (python.exe avaa Windows 11:ssä näkyvän pääteikkunan,
+// jonka sulkeminen pysäyttää puhepalvelun.) Tulosteet menevät silti pm2:n lokeihin.
+const python = path.join(__dirname, "speech", ".venv", process.platform === "win32" ? "Scripts/pythonw.exe" : "bin/python");
 
 module.exports = {
   apps: [
@@ -13,6 +15,7 @@ module.exports = {
       interpreter: python,
       cwd: __dirname,
       env: { PYTHONUNBUFFERED: "1" },
+      windowsHide: true,
       autorestart: true,
       min_uptime: 10_000,
       max_restarts: 10,

@@ -46,6 +46,8 @@ HERE = Path(__file__).parent
 VOICE_PATH = Path(os.environ.get("PIPER_VOICE", HERE / "voices" / "fi_FI-harri-medium.onnx"))
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "large-v3-turbo")
 HOST = "127.0.0.1"
+# Windows: palvelu ajetaan ilman konsoli-ikkunaa (pythonw), joten FFmpeg ei saa avata omaa ikkunaansa.
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 PORT = int(os.environ.get("SPEECH_PORT", "5005"))
 MAX_CHARS = 1000
 STT_RATE = 16_000
@@ -111,6 +113,7 @@ def synthesize_ogg(text: str, length_scale: float, pitch: float) -> bytes:
         input=buf.getvalue(),
         capture_output=True,
         check=True,
+        creationflags=NO_WINDOW,
     )
     return result.stdout
 
@@ -125,6 +128,7 @@ def synthesize_pcm16k(text: str) -> bytes:
         input=buf.getvalue(),
         capture_output=True,
         check=True,
+        creationflags=NO_WINDOW,
     ).stdout
 
 
